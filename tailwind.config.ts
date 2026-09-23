@@ -14,6 +14,12 @@ export default {
     },
     extend: {
       colors: {
+        brand: {
+          navy: "#10263d",
+          teal: "#37b9a5",
+          coral: "#ef806f",
+          gold: "#e2b957",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -57,6 +63,13 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+      },
+      fontFamily: {
+        sans: ["DM Sans", "ui-sans-serif", "system-ui"],
+        display: ["Space Grotesk", "DM Sans", "ui-sans-serif"],
+      },
+      boxShadow: {
+        panel: "0 3px 15px rgba(20, 40, 70, 0.03)",
       },
       borderRadius: {
         lg: "var(--radius)",

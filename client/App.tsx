@@ -8,6 +8,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import DsrLayout from "./components/dsr/DsrLayout";
+import Projects from "./pages/Projects";
+import ProjectDetails from "./pages/ProjectDetails";
+import WorkspacePlaceholder from "./pages/WorkspacePlaceholder";
 
 const queryClient = new QueryClient();
 
@@ -18,8 +22,15 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route element={<DsrLayout />}>
+            <Route path="/" element={<Index />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/projects/:projectId" element={<ProjectDetails />} />
+            <Route path="/reports" element={<WorkspacePlaceholder />} />
+            <Route path="/blockers" element={<WorkspacePlaceholder />} />
+            <Route path="/risks" element={<WorkspacePlaceholder />} />
+            <Route path="/settings" element={<WorkspacePlaceholder />} />
+          </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

@@ -1,62 +1,53 @@
-import { DemoResponse } from "@shared/api";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { Link, useOutletContext } from "react-router-dom";
+import { ArrowRight, CheckCircle2, CircleDashed, Filter, Layers3, ShieldAlert, Zap } from "lucide-react";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { DsrOutletContext } from "@/components/dsr/DsrLayout";
+import { PageTitle, ProgressBar, SectionHeading, StatusBadge } from "@/components/dsr/DsrPrimitives";
+import { bugCount, projectCompletion, type Project } from "@/lib/dsr-data";
+
+const statusColors = { Completed: "#36b29e", "In Progress": "#6195dc", "Yet to Start": "#cbd5e1", Blocked: "#ec806e", Failed: "#ec806e", Deferred: "#e2b957" };
+
+function KpiCard({ label, value, helper, icon: Icon, tone }: { label: string; value: number; helper: string; icon: typeof Layers3; tone: string }) {
+  return <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><div className="flex items-start justify-between"><div><p className="text-xs font-semibold text-slate-500">{label}</p><p className="mt-3 text-[28px] font-bold tracking-tight text-slate-900">{value}</p></div><div className={`grid h-10 w-10 place-items-center rounded-xl ${tone}`}><Icon size={19} /></div></div><p className="mt-3 text-[11px] font-medium text-slate-400">{helper}</p></div>;
+}
 
 export default function Index() {
-  const [exampleFromServer, setExampleFromServer] = useState("");
-  // Fetch users on component mount
-  useEffect(() => {
-    fetchDemo();
-  }, []);
+  const { projects } = useOutletContext<DsrOutletContext>();
+  const metrics = useMemo(() => {
+    const completed = projects.filter((project) => project.status === "Completed").length;
+    const inProgress = projects.filter((project) => project.status === "In Progress").length;
+    const yetToStart = projects.filter((project) => project.status === "Yet to Start").length;
+    const blockers = projects.filter((project) => project.blockers.some((blocker) => blocker.status === "Blocked" || blocker.status === "Open")).length;
+    const automationIssues = projects.filter((project) => ["Failed", "Blocked", "Deferred"].includes(project.automationStatus)).length;
+    return { completed, inProgress, yetToStart, blockers, automationIssues };
+  }, [projects]);
+  const statusData = Object.entries(projects.reduce<Record<string, number>>((result, project) => { result[project.status] = (result[project.status] ?? 0) + 1; return result; }, {})).map(([name, value]) => ({ name, value }));
+  const completionData = projects.map((project) => ({ name: project.name.replace("SafeQ Cloud ", "SQ ").replace("HP Secure Print - ", "HP SP ").replace("PaperCut MF - ", "PC MF "), completion: projectCompletion(project) })).sort((a, b) => b.completion - a.completion);
+  const blockerData = projects.map((project) => ({ name: project.name, blockers: project.blockers.length })).filter((project) => project.blockers > 0).sort((a, b) => b.blockers - a.blockers);
+  const automationData = ["Completed", "In Progress", "Yet to Start", "Failed / Deferred"].map((name) => ({ name, count: name === "Failed / Deferred" ? metrics.automationIssues : projects.filter((project) => project.automationStatus === name).length })).filter((entry) => entry.count > 0);
+  const recentProjects = projects.filter((project) => project.status !== "Completed").slice(0, 5);
 
-  // Example of how to fetch data from the server (if needed)
-  const fetchDemo = async () => {
-    try {
-      const response = await fetch("/api/demo");
-      const data = (await response.json()) as DemoResponse;
-      setExampleFromServer(data.message);
-    } catch (error) {
-      console.error("Error fetching hello:", error);
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-      <div className="text-center">
-        {/* TODO: FUSION_GENERATION_APP_PLACEHOLDER replace everything here with the actual app! */}
-        <h1 className="text-2xl font-semibold text-slate-800 flex items-center justify-center gap-3">
-          <svg
-            className="animate-spin h-8 w-8 text-slate-400"
-            viewBox="0 0 50 50"
-          >
-            <circle
-              className="opacity-30"
-              cx="25"
-              cy="25"
-              r="20"
-              stroke="currentColor"
-              strokeWidth="5"
-              fill="none"
-            />
-            <circle
-              className="text-slate-600"
-              cx="25"
-              cy="25"
-              r="20"
-              stroke="currentColor"
-              strokeWidth="5"
-              fill="none"
-              strokeDasharray="100"
-              strokeDashoffset="75"
-            />
-          </svg>
-          Generating your app...
-        </h1>
-        <p className="mt-4 text-slate-600 max-w-md">
-          Watch the chat on the left for updates that might need your attention
-          to finish generating
-        </p>
-        <p className="mt-4 hidden max-w-md">{exampleFromServer}</p>
-      </div>
+  return <div className="mx-auto max-w-[1440px]">
+    <PageTitle eyebrow="20 September 2025 · Weekly report" title="Good morning, QA team" description="A clear view of delivery health across your active testing workstreams." action={<Link to="/projects" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#10263d] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#183752]"><Filter size={14} />View all projects</Link>} />
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <KpiCard label="Total projects" value={projects.length} helper="Across current QA portfolio" icon={Layers3} tone="bg-[#eaf2ff] text-[#4e83cf]" />
+      <KpiCard label="Completed" value={metrics.completed} helper="Ready for sign-off" icon={CheckCircle2} tone="bg-[#e7f7f1] text-[#2a9b85]" />
+      <KpiCard label="In progress" value={metrics.inProgress} helper="Actively being executed" icon={Zap} tone="bg-[#fff7e5] text-[#bd8a2b]" />
+      <KpiCard label="Yet to start" value={metrics.yetToStart} helper="Planned for next cycle" icon={CircleDashed} tone="bg-slate-100 text-slate-500" />
+      <KpiCard label="With blockers" value={metrics.blockers} helper="Need attention this week" icon={ShieldAlert} tone="bg-[#fff0ed] text-[#d36d5f]" />
     </div>
-  );
+
+    <div className="mt-7 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><SectionHeading title="Completion by project" description="Average execution completion across tracked areas" /><div className="h-[300px] w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={completionData} layout="vertical" margin={{ top: 4, right: 18, left: 8, bottom: 4 }}><CartesianGrid horizontal={false} stroke="#edf1f5" /><XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="name" width={88} tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [`${value}%`, "Completion"]} contentStyle={{ border: "1px solid #e2e8f0", borderRadius: 10, fontSize: 12 }} /><Bar dataKey="completion" fill="#37b9a5" radius={[0, 5, 5, 0]} barSize={13} /></BarChart></ResponsiveContainer></div></div>
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><SectionHeading title="Projects by status" description="Current delivery distribution" /><div className="relative h-[220px]"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={statusData} innerRadius={67} outerRadius={91} paddingAngle={3} dataKey="value" strokeWidth={0}>{statusData.map((entry) => <Cell key={entry.name} fill={statusColors[entry.name as keyof typeof statusColors] ?? "#cbd5e1"} />)}</Pie><Tooltip contentStyle={{ border: "1px solid #e2e8f0", borderRadius: 10, fontSize: 12 }} /></PieChart></ResponsiveContainer><div className="pointer-events-none absolute inset-0 grid place-items-center pb-1 text-center"><div><p className="text-3xl font-bold text-slate-800">{projects.length}</p><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Projects</p></div></div></div><div className="grid grid-cols-2 gap-x-4 gap-y-2 px-1">{statusData.map((entry) => <div key={entry.name} className="flex items-center justify-between gap-2 text-[11px]"><span className="flex min-w-0 items-center gap-1.5 text-slate-500"><span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: statusColors[entry.name as keyof typeof statusColors] ?? "#cbd5e1" }} />{entry.name}</span><span className="font-bold text-slate-700">{entry.value}</span></div>)}</div></div>
+    </div>
+
+    <div className="mt-5 grid gap-5 lg:grid-cols-2">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><SectionHeading title="Blockers by project" description="Open items impacting delivery" action={<Link to="/blockers" className="text-xs font-semibold text-[#269b8c] hover:underline">View blockers</Link>} />{blockerData.length ? <div className="space-y-4">{blockerData.slice(0, 5).map((entry) => <div key={entry.name}><div className="mb-1.5 flex items-center justify-between gap-3"><span className="truncate text-xs font-semibold text-slate-600">{entry.name}</span><span className="text-[11px] font-bold text-[#d36d5f]">{entry.blockers} {entry.blockers === 1 ? "blocker" : "blockers"}</span></div><div className="h-2 overflow-hidden rounded-full bg-[#fff0ed]"><div className="h-full rounded-full bg-[#ef806f]" style={{ width: `${Math.max(20, entry.blockers / Math.max(...blockerData.map((item) => item.blockers)) * 100)}%` }} /></div></div>)}</div> : <p className="py-8 text-center text-xs text-slate-400">No active blockers.</p>}</div>
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><SectionHeading title="Automation status" description="Print, scan, and script readiness" /><div className="space-y-3">{automationData.map((entry) => <div key={entry.name} className="flex items-center gap-3"><div className="w-28 text-xs font-medium text-slate-500">{entry.name}</div><div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${entry.name === "Completed" ? "bg-[#37b9a5]" : entry.name === "Failed / Deferred" ? "bg-[#ef806f]" : entry.name === "In Progress" ? "bg-[#6195dc]" : "bg-slate-300"}`} style={{ width: `${(entry.count / projects.length) * 100}%` }} /></div><div className="w-5 text-right text-xs font-bold text-slate-700">{entry.count}</div></div>)}</div><div className="mt-6 rounded-xl bg-[#f7f9fc] p-3.5"><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Attention needed</p><p className="mt-1 text-sm font-semibold text-slate-700">{metrics.automationIssues} project{metrics.automationIssues === 1 ? "" : "s"} with automation issues</p><Link to="/projects" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-[#269b8c]">Review projects <ArrowRight size={13} /></Link></div></div>
+    </div>
+
+    <div className="mt-5 rounded-2xl border border-slate-200/80 bg-white shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 className="text-[15px] font-bold text-slate-800">Active workstreams</h2><p className="mt-0.5 text-xs text-slate-400">Projects needing the team&apos;s attention</p></div><Link to="/projects" className="flex items-center gap-1 text-xs font-bold text-[#269b8c]">Open projects <ArrowRight size={13} /></Link></div><div className="divide-y divide-slate-100">{recentProjects.map((project: Project) => <Link to={`/projects/${project.id}`} key={project.id} className="grid grid-cols-[1fr_auto] items-center gap-4 px-5 py-3.5 transition hover:bg-slate-50 sm:grid-cols-[1.25fr_0.7fr_0.8fr_0.8fr_auto]"><div className="min-w-0"><p className="truncate text-xs font-bold text-slate-700">{project.name}</p><p className="mt-0.5 text-[11px] text-slate-400">{project.owner}</p></div><div className="hidden sm:block"><StatusBadge status={project.status} compact /></div><div className="hidden sm:block"><ProgressBar value={projectCompletion(project) / 100} /></div><div className="hidden text-right sm:block"><span className="text-xs font-bold text-slate-700">{bugCount(project)}</span><span className="ml-1 text-[10px] text-slate-400">bugs</span></div><ArrowRight size={15} className="text-slate-300" /></Link>)}{recentProjects.length === 0 && <p className="px-5 py-8 text-center text-sm text-slate-400">All projects are completed.</p>}</div></div>
+  </div>;
 }
