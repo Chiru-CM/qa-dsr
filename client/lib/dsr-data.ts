@@ -19,6 +19,27 @@ export const PROJECT_NAMES = [
   "PaperCut MF - 26.0.5",
 ] as const;
 
+export const excelTabNames: Record<string, string> = {
+  "safeq-cloud": "SafeQCloud",
+  "myq-roger": "MyQ Roger",
+  hpcr: "HPCR",
+  "hp-advance": "HP Advance",
+  papercut: "PaperCut",
+  "hp-secure-print": "HP Secure Print",
+  "safeq-cloud-oxpd": "SafeQ Cloud OXPd",
+  "safeq-cloud-workpath": "SafeQ Cloud Workpath",
+  "myq-x": "MyQ X",
+  "ndd-print-oxpd": "NDD_Print_OXPd",
+  "ndd-print-workpath": "NDD_Print_Workpath",
+  "safeq-cloud-npi-workpath": "SafeQ_Cloud_NPI-Workpath",
+  "hp-secure-print-npi-blades": "HP Secure Print- NPI-Blades",
+  "hp-secure-print-npi-heroes": "HP Secure Print- NPI-Heroes",
+  "hp-advanced-npi": "HP Advanced-NPI",
+  "hp-advanced-fleet": "HP Advanced-Fleet",
+  "paper-cut-mf-26-0-3": "Paper Cut MF-26.0.3",
+  "papercut-mf-26-0-5": "PaperCut MF-26.0.5",
+};
+
 export type ProjectStatus =
   | "Completed"
   | "In Progress"
