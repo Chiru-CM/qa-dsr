@@ -36,7 +36,7 @@ export const excelTabNames: Record<string, string> = {
   "hp-secure-print-npi-heroes": "HP Secure Print- NPI-Heroes",
   "hp-advanced-npi": "HP Advanced-NPI",
   "hp-advanced-fleet": "HP Advanced-Fleet",
-  "paper-cut-mf-26-0-3": "Paper Cut MF-26.0.3",
+  "papercut-mf-26-0-3": "Paper Cut MF-26.0.3",
   "papercut-mf-26-0-5": "PaperCut MF-26.0.5",
 };
 
