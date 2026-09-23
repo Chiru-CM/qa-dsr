@@ -19,6 +19,15 @@ export const PROJECT_NAMES = [
   "PaperCut MF - 26.0.5",
 ] as const;
 
+export const DASHBOARD_PROJECT_IDS = [
+  "ndd-print-oxpd",
+  "safeq-cloud-npi-workpath",
+  "hp-advanced-npi",
+  "hp-advanced-fleet",
+  "papercut-mf-26-0-3",
+  "papercut-mf-26-0-5",
+] as const;
+
 export const excelTabNames: Record<string, string> = {
   "safeq-cloud": "SafeQCloud",
   "myq-roger": "MyQ Roger",
