@@ -12,11 +12,15 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import { cloneProjects, normalizeProjects, type Project } from "@/lib/dsr-data";
+import { cloneProjects, cloneSprints, normalizeProjects, type Project, type Sprint } from "@/lib/dsr-data";
 
 export interface DsrOutletContext {
   projects: Project[];
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
+  sprints: Sprint[];
+  setSprints: React.Dispatch<React.SetStateAction<Sprint[]>>;
+  activeSprintId: string;
+  setActiveSprintId: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const navItems = [
@@ -33,12 +37,21 @@ export default function DsrLayout() {
     const saved = localStorage.getItem("dsr-projects");
     return saved ? normalizeProjects(JSON.parse(saved) as Project[]) : cloneProjects();
   });
+  const [sprints, setSprints] = useState<Sprint[]>(() => {
+    const saved = localStorage.getItem("dsr-sprints");
+    return saved ? JSON.parse(saved) as Sprint[] : cloneSprints();
+  });
+  const [activeSprintId, setActiveSprintId] = useState(() => sprints[0]?.id ?? "");
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
     localStorage.setItem("dsr-projects", JSON.stringify(projects));
   }, [projects]);
+
+  useEffect(() => {
+    localStorage.setItem("dsr-sprints", JSON.stringify(sprints));
+  }, [sprints]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -96,13 +109,13 @@ export default function DsrLayout() {
             <span className="text-sm font-semibold text-slate-800 md:hidden">QALens</span>
           </div>
           <div className="flex items-center gap-4">
-            <div className="hidden items-center gap-2 border-r border-slate-200 pr-4 text-right sm:block"><p className="text-[11px] font-medium text-slate-400">Reporting period</p><p className="text-xs font-semibold text-slate-700">20 September 2025</p></div>
+            <div className="hidden items-center gap-2 border-r border-slate-200 pr-4 text-right sm:block"><p className="text-[11px] font-medium text-slate-400">Reporting period</p><p className="text-xs font-semibold text-slate-700">{sprints.find((sprint) => sprint.id === activeSprintId)?.name ?? "No sprint selected"}</p></div>
             <button className="relative rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Notifications"><Bell size={18} /><span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#ef806f]" /></button>
             <div className="grid h-8 w-8 place-items-center rounded-full bg-[#e8f7f4] text-[11px] font-bold text-[#218f82]">CM</div>
           </div>
         </header>
         <main className="min-h-[calc(100vh-72px)] p-5 md:p-8">
-          <Outlet context={{ projects, setProjects }} />
+          <Outlet context={{ projects, setProjects, sprints, setSprints, activeSprintId, setActiveSprintId }} />
         </main>
       </div>
     </div>

@@ -28,6 +28,26 @@ export const DASHBOARD_PROJECT_IDS = [
   "papercut-mf-26-0-5",
 ] as const;
 
+export interface Sprint {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  projectIds: string[];
+}
+
+export const initialSprints: Sprint[] = [
+  {
+    id: "sprint-september-2025",
+    name: "September 2025 Sprint",
+    startDate: "2025-09-01",
+    endDate: "2025-09-30",
+    projectIds: [...DASHBOARD_PROJECT_IDS],
+  },
+];
+
+export const cloneSprints = () => JSON.parse(JSON.stringify(initialSprints)) as Sprint[];
+
 export const excelTabNames: Record<string, string> = {
   "safeq-cloud": "SafeQCloud",
   "myq-roger": "MyQ Roger",

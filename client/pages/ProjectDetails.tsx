@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
-import { Link, Navigate, useOutletContext, useParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useOutletContext, useParams } from "react-router-dom";
 import { ArrowLeft, FileText, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
 import { Modal } from "@/components/dsr/Modal";
@@ -12,6 +12,7 @@ const inputClass = "form-input";
 
 export default function ProjectDetails() {
   const { projectId } = useParams();
+  const location = useLocation();
   const { projects, setProjects } = useOutletContext<DsrOutletContext>();
   const project = projects.find((item) => item.id === projectId);
   const [modal, setModal] = useState<ModalType>(null);
@@ -58,7 +59,7 @@ export default function ProjectDetails() {
   const modalTitle = modal === "blocker" ? `${editingBlocker ? "Edit" : "Add"} blocker` : modal === "execution" ? `${editingExecution ? "Edit" : "Add"} execution item` : `${editingRisk ? "Edit" : "Add"} project risk`;
 
   return <div className="mx-auto max-w-[1440px]">
-    <Link to="/projects" className="mb-5 inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 transition hover:text-[#218f82]"><ArrowLeft size={14} />Back to all projects</Link>
+    <Link to={location.state?.fromSprint ? "/" : "/projects"} className="mb-5 inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 transition hover:text-[#218f82]"><ArrowLeft size={14} />{location.state?.fromSprint ? "Back to sprint overview" : "Back to all projects"}</Link>
     <PageTitle eyebrow="Project DSR" title={project.name} description={`${project.owner} · Last updated ${project.lastUpdated}`} action={<button onClick={() => openModal("project")} className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 shadow-sm transition hover:border-[#b9e7df] hover:text-[#218f82]"><Pencil size={14} />Edit project</button>} />
     <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><p className="text-[11px] font-semibold text-slate-400">Overall status</p><div className="mt-3"><StatusBadge status={project.status} /></div></div><div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><p className="text-[11px] font-semibold text-slate-400">Stage readiness</p><div className="mt-3 flex items-center gap-3"><span className="text-2xl font-bold text-slate-800">{stageProgress}%</span><ProgressBar value={stageProgress / 100} className="flex-1" /></div></div><div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><p className="text-[11px] font-semibold text-slate-400">Open blockers</p><p className="mt-2 text-2xl font-bold text-[#d36d5f]">{project.blockers.filter((item) => item.status !== "Resolved").length}</p><p className="mt-0.5 text-[11px] text-slate-400">{bugCount(project)} bug IDs tracked</p></div><div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><p className="text-[11px] font-semibold text-slate-400">Automation</p><div className="mt-3"><StatusBadge status={project.automationStatus} /></div></div></div>
 
