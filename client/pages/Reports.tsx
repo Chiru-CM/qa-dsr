@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, CalendarDays, Check, CircleAlert, Clock3, Download, FileImage, Printer, ShieldAlert, Users } from "lucide-react";
+import { BarChart3, CalendarDays, Check, CircleAlert, Clock3, Download, FileImage, FileText, Printer, ShieldAlert, Users } from "lucide-react";
 import { toPng } from "html-to-image";
 import { useOutletContext } from "react-router-dom";
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
-import { PageTitle, ProgressBar } from "@/components/dsr/DsrPrimitives";
-import { bugCount, projectCompletion, type Project, type Sprint } from "@/lib/dsr-data";
+import { PageTitle, ProgressBar, StatusBadge } from "@/components/dsr/DsrPrimitives";
+import { projectCompletion, type Project, type Sprint } from "@/lib/dsr-data";
 
 const localDate = () => {
   const now = new Date();
@@ -41,13 +41,21 @@ const statusDot: Record<string, string> = {
   "Needs attention": "bg-[#ef806f]",
 };
 
+const defaultStageNames = ["Functionality Execution", "Non Functionality Execution", "Automation- Print", "Automation- Scan"];
+const normalizeStageName = (name: string) => name.toLowerCase().replace(/[^a-z]/g, "");
+
 const safeFileName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
 function ProjectReportCard({ project, index }: { project: Project; index: number }) {
   const status = executionStatus(project);
   const completion = projectCompletion(project);
-  const activeBlockers = project.blockers.filter((blocker) => !["Resolved", "Deferred"].includes(blocker.currentStatus));
-  const activeRisks = project.risks.filter((risk) => !["Resolved", "Deferred"].includes(risk.status));
+  const stages = [
+    ...defaultStageNames.map((name) => {
+      const stage = project.stages.find((item) => normalizeStageName(item.name) === normalizeStageName(name));
+      return { id: stage?.id ?? `default-${normalizeStageName(name)}`, name, status: stage?.status ?? "N/A" };
+    }),
+    ...project.stages.filter((stage) => stage.isCustom),
+  ];
 
   return (
     <article className="sprint-report-card overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_3px_15px_rgba(20,40,70,0.035)]">
@@ -59,34 +67,46 @@ function ProjectReportCard({ project, index }: { project: Project; index: number
             <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500"><Users size={13} />{project.owner || "Unassigned"}</p>
           </div>
         </div>
-        <span className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-bold ${statusColors[status]}`}><span className={`h-1.5 w-1.5 rounded-full ${statusDot[status]}`} />{status}</span>
+        <div className="flex flex-wrap items-center gap-3"><span className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-bold ${statusColors[status]}`}><span className={`h-1.5 w-1.5 rounded-full ${statusDot[status]}`} />{status}</span><span className="text-xs font-bold text-slate-500">{completion}% complete</span></div>
       </div>
 
-      <div className="grid gap-5 p-5 md:grid-cols-[minmax(180px,0.7fr)_minmax(0,1.3fr)] md:p-6">
-        <div>
-          <div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Overall completion</p><p className="mt-1 text-3xl font-bold tracking-tight text-[#10263d]">{completion}<span className="ml-0.5 text-base text-slate-400">%</span></p></div><BarChart3 size={19} className="mb-1 text-[#37b9a5]" /></div>
-          <ProgressBar value={completion / 100} className="mt-3" showValue={false} />
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <div className="rounded-xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Open blockers</p><p className={`mt-1 text-lg font-bold ${activeBlockers.length ? "text-[#c65e52]" : "text-slate-700"}`}>{activeBlockers.length}</p></div>
-            <div className="rounded-xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Bug references</p><p className="mt-1 text-lg font-bold text-slate-700">{bugCount(project)}</p></div>
-          </div>
-        </div>
+      <div className="space-y-4 p-5 md:p-6">
+        <section className="rounded-xl border border-slate-200/80 p-4">
+          <div className="mb-3 flex items-center justify-between gap-3"><div><h4 className="text-sm font-bold text-slate-800">High level status report</h4><p className="mt-0.5 text-[11px] text-slate-400">Project execution stages.</p></div><BarChart3 size={17} className="text-[#37b9a5]" /></div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{stages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-3"><p className="mb-2 text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><StatusBadge status={stage.status} compact /></div>)}</div>
+        </section>
 
-        <div>
-          <p className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Execution areas</p>
-          {project.execution.length ? <div className="space-y-3">{project.execution.map((entry) => (
-            <div key={entry.id}>
-              <div className="mb-1 flex items-center justify-between gap-3"><span className="min-w-0 truncate text-xs font-semibold text-slate-700">{entry.area}</span><span className="shrink-0 text-[10px] font-bold text-slate-500">{entry.completion === null ? "Not tracked" : `${Math.round(entry.completion * 100)}%`}</span></div>
-              <ProgressBar value={entry.completion} showValue={false} />
-              {(entry.notes || entry.bugs.length > 0 || entry.owner) && <p className="mt-1.5 text-[10px] leading-4 text-slate-500">{[entry.notes, entry.bugs.length ? `Bugs: ${entry.bugs.join(", ")}` : "", entry.owner ? `Owner: ${entry.owner}` : ""].filter(Boolean).join(" · ")}</p>}
-            </div>
-          ))}</div> : <p className="text-xs text-slate-400">No execution areas recorded.</p>}
-        </div>
-      </div>
+        {project.blockers.length > 0 && <section className="rounded-xl border border-slate-200/80 p-4">
+          <div className="mb-3 flex items-center gap-2"><ShieldAlert size={15} className="text-[#c65e52]" /><div><h4 className="text-sm font-bold text-slate-800">Blockers</h4><p className="mt-0.5 text-[11px] text-slate-400">Issues impacting delivery or test case coverage.</p></div></div>
+          <div className="space-y-2">{project.blockers.map((blocker) => <div key={blocker.id} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50/50 p-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.55fr_0.85fr_1.5fr]">
+            <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Description</p><p className="mt-1 text-xs font-bold text-slate-700">{blocker.description}</p></div>
+            <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Impacted test cases</p><p className="mt-1 text-xs font-semibold text-slate-600">{blocker.impact}%</p></div>
+            <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Current status</p><div className="mt-1"><StatusBadge status={blocker.currentStatus} compact /></div></div>
+            <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Additional notes</p><p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-500">{blocker.notes || "—"}</p></div>
+          </div>)}</div>
+        </section>}
 
-      <div className="grid gap-px border-t border-slate-100 bg-slate-100 md:grid-cols-2">
-        <div className="bg-white p-5 md:px-6"><p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Project update</p><p className="whitespace-pre-wrap text-xs leading-5 text-slate-600">{project.notes || "No project update recorded."}</p></div>
-        <div className="bg-white p-5 md:px-6"><p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400"><ShieldAlert size={12} />Risks & blockers</p>{activeBlockers.length || activeRisks.length ? <ul className="space-y-1.5">{activeBlockers.map((blocker) => <li key={blocker.id} className="text-xs leading-5 text-slate-600"><span className="font-semibold text-[#c65e52]">{blocker.currentStatus || "Blocker"}:</span> {blocker.description}{blocker.notes ? ` — ${blocker.notes}` : ""}</li>)}{activeRisks.map((risk) => <li key={risk.id} className="text-xs leading-5 text-slate-600"><span className="font-semibold text-[#ae7d22]">Risk:</span> {risk.description}{risk.notes ? ` — ${risk.notes}` : ""}</li>)}</ul> : <p className="text-xs leading-5 text-slate-500">No active risks or blockers reported.</p>}</div>
+        <section className="rounded-xl border border-slate-200/80 p-4">
+          <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Current execution status</h4><p className="mt-0.5 text-[11px] text-slate-400">Completion, defects, ownership, and handoffs for each execution area.</p></div>
+          {project.execution.length ? <div className="overflow-hidden rounded-lg border border-slate-100">
+            <div className="hidden grid-cols-[1.15fr_1.1fr_1fr_1.7fr_0.85fr_0.95fr] gap-3 border-b border-slate-100 bg-slate-50 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-slate-400 md:grid"><span>Execution area</span><span>Completion</span><span>Bugs submitted</span><span>Additional notes</span><span>Owner</span><span>POC / SL</span></div>
+            {project.execution.map((entry) => <div key={entry.id} className="grid gap-3 border-b border-slate-100 p-3 last:border-b-0 md:grid-cols-[1.15fr_1.1fr_1fr_1.7fr_0.85fr_0.95fr] md:items-start">
+              <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Execution area</p><p className="mt-1 text-xs font-bold text-slate-700">{entry.area}</p></div>
+              <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Completion</p><div className="mt-1"><ProgressBar value={entry.completion} /></div></div>
+              <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Bugs submitted</p><div className="mt-1 flex flex-wrap gap-1">{entry.bugs.length ? entry.bugs.map((bug) => <span key={bug} className="rounded-md bg-[#fff4df] px-1.5 py-1 text-[9px] font-bold text-[#ae7d22]">{bug}</span>) : <span className="text-xs text-slate-400">—</span>}</div></div>
+              <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Additional notes</p><p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-500">{entry.notes || "—"}</p></div>
+              <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Owner</p><p className="mt-1 text-xs text-slate-600">{entry.owner || "—"}</p></div>
+              <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">POC / SL</p><p className="mt-1 text-xs text-slate-600">{entry.poc || "—"}</p></div>
+            </div>)}
+          </div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No execution items recorded.</p>}
+        </section>
+
+        {project.risks.length > 0 && <section className="rounded-xl border border-slate-200/80 p-4">
+          <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Current project risks</h4><p className="mt-0.5 text-[11px] text-slate-400">Risks to monitor through the next reporting cycle.</p></div>
+          <div className="space-y-2">{project.risks.map((risk) => <div key={risk.id} className="rounded-lg border border-slate-100 bg-slate-50/50 p-3"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start"><div><p className="text-xs font-bold text-slate-700">{risk.description}</p>{risk.notes && <p className="mt-1 whitespace-pre-wrap text-[11px] leading-5 text-slate-500">{risk.notes}</p>}</div><div className="flex shrink-0 items-center gap-3"><StatusBadge status={risk.status} compact /><span className="text-[10px] font-medium text-slate-400">Owner: {risk.owner || "Unassigned"}</span></div></div></div>)}</div>
+        </section>}
+
+        {project.notes.trim() && <section className="rounded-xl border border-slate-200/80 p-4"><div className="mb-2 flex items-center gap-2"><FileText size={15} className="text-[#37b9a5]" /><h4 className="text-sm font-bold text-slate-800">Notes</h4></div><p className="whitespace-pre-wrap rounded-lg bg-[#f7f9fc] p-3 text-xs leading-5 text-slate-600">{project.notes}</p></section>}
       </div>
     </article>
   );
