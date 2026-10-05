@@ -68,13 +68,11 @@ export default function Index() {
     .filter((project): project is Project => Boolean(project));
 
   const toggleSprint = (sprintId: string) => {
+    if (!expandedSprintIds.has(sprintId)) setActiveSprintId(sprintId);
     setExpandedSprintIds((current) => {
       const next = new Set(current);
       if (next.has(sprintId)) next.delete(sprintId);
-      else {
-        next.add(sprintId);
-        setActiveSprintId(sprintId);
-      }
+      else next.add(sprintId);
       return next;
     });
   };

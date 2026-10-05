@@ -4,8 +4,8 @@ import {
   BarChart3,
   Bell,
   ChevronRight,
+  CalendarDays,
   FolderKanban,
-  LayoutDashboard,
   Menu,
   Settings,
   ShieldAlert,
@@ -24,7 +24,7 @@ export interface DsrOutletContext {
 }
 
 const navItems = [
-  { label: "DSR Dashboard", to: "/", icon: LayoutDashboard },
+  { label: "Sprints", to: "/", icon: CalendarDays },
   { label: "Projects", to: "/projects", icon: FolderKanban },
   { label: "Reports", to: "/reports", icon: BarChart3 },
   { label: "Blockers", to: "/blockers", icon: ShieldAlert },
