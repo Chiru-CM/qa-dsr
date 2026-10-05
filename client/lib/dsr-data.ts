@@ -28,6 +28,30 @@ export const DASHBOARD_PROJECT_IDS = [
   "papercut-mf-26-0-5",
 ] as const;
 
+export type SprintStatus = "Not Started" | "In Progress" | "Completed" | "Blocked";
+
+export interface Sprint {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: SprintStatus;
+  projectIds: string[];
+}
+
+export const initialSprints: Sprint[] = [
+  {
+    id: "sprint-september-2025",
+    name: "September 2025 Sprint",
+    startDate: "2025-09-01",
+    endDate: "2025-09-30",
+    status: "In Progress",
+    projectIds: [...DASHBOARD_PROJECT_IDS],
+  },
+];
+
+export const cloneSprints = () => JSON.parse(JSON.stringify(initialSprints)) as Sprint[];
+
 export const excelTabNames: Record<string, string> = {
   "safeq-cloud": "SafeQCloud",
   "myq-roger": "MyQ Roger",
@@ -67,6 +91,7 @@ export interface Stage {
   id: string;
   name: string;
   status: StageStatus;
+  isCustom?: boolean;
 }
 
 export interface Blocker {
@@ -74,7 +99,11 @@ export interface Blocker {
   description: string;
   impact: number;
   status: RecordStatus;
+  completion?: number | null;
+  bugs?: string[];
   notes: string;
+  owner?: string;
+  poc?: string;
 }
 
 export interface ExecutionItem {
