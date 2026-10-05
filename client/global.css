@@ -136,3 +136,90 @@
     white-space: pre;
   }
 }
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  html,
+  body,
+  #root {
+    background: #fff !important;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  aside,
+  header,
+  .sprint-report-page-title,
+  .sprint-report-controls,
+  .sprint-report-alert {
+    display: none !important;
+  }
+
+  .dsr-main-content {
+    padding-left: 0 !important;
+  }
+
+  main {
+    min-height: 0 !important;
+    padding: 0 !important;
+  }
+
+  main > div {
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .sprint-report-print-area {
+    gap: 12px !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+  }
+
+  .sprint-report-hero {
+    break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .sprint-report-summary,
+  .sprint-report-stage-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .sprint-report-project-heading {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  .sprint-report-blocker-row {
+    grid-template-columns: 1.2fr 0.55fr 0.85fr 1.5fr !important;
+  }
+
+  .sprint-report-execution-header {
+    display: grid !important;
+    grid-template-columns: 1.15fr 1.1fr 1fr 1.7fr 0.85fr 0.95fr !important;
+  }
+
+  .sprint-report-execution-row {
+    grid-template-columns: 1.15fr 1.1fr 1fr 1.7fr 0.85fr 0.95fr !important;
+  }
+
+  .sprint-report-mobile-label {
+    display: none !important;
+  }
+
+  .sprint-report-card {
+    width: 100%;
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+}

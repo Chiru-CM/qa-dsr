@@ -14,6 +14,17 @@ import {
 } from "lucide-react";
 import { cloneProjects, cloneSprints, normalizeProjects, type Project, type Sprint } from "@/lib/dsr-data";
 
+export interface SprintDailySnapshot {
+  sprintId: string;
+  sprintName: string;
+  sprintStartDate: string;
+  sprintEndDate: string;
+  sprintStatus: Sprint["status"];
+  date: string;
+  capturedAt: string;
+  projects: Project[];
+}
+
 export interface DsrOutletContext {
   projects: Project[];
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
@@ -21,6 +32,7 @@ export interface DsrOutletContext {
   setSprints: React.Dispatch<React.SetStateAction<Sprint[]>>;
   activeSprintId: string;
   setActiveSprintId: React.Dispatch<React.SetStateAction<string>>;
+  dailySnapshots: Record<string, SprintDailySnapshot>;
 }
 
 const navItems = [
@@ -42,6 +54,10 @@ export default function DsrLayout() {
     return saved ? JSON.parse(saved) as Sprint[] : cloneSprints();
   });
   const [activeSprintId, setActiveSprintId] = useState(() => sprints[0]?.id ?? "");
+  const [dailySnapshots, setDailySnapshots] = useState<Record<string, SprintDailySnapshot>>(() => {
+    const saved = localStorage.getItem("dsr-daily-snapshots");
+    return saved ? Object.fromEntries(Object.entries(JSON.parse(saved) as Record<string, SprintDailySnapshot>).map(([key, snapshot]) => [key, { ...snapshot, projects: normalizeProjects(snapshot.projects) }])) : {};
+  });
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
 
@@ -52,6 +68,31 @@ export default function DsrLayout() {
   useEffect(() => {
     localStorage.setItem("dsr-sprints", JSON.stringify(sprints));
   }, [sprints]);
+
+  useEffect(() => {
+    localStorage.setItem("dsr-daily-snapshots", JSON.stringify(dailySnapshots));
+  }, [dailySnapshots]);
+
+  useEffect(() => {
+    const now = new Date();
+    const date = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+    setDailySnapshots((current) => {
+      const next = { ...current };
+      sprints.forEach((sprint) => {
+        next[`${sprint.id}:${date}`] = {
+          sprintId: sprint.id,
+          sprintName: sprint.name,
+          sprintStartDate: sprint.startDate,
+          sprintEndDate: sprint.endDate,
+          sprintStatus: sprint.status,
+          date,
+          capturedAt: now.toISOString(),
+          projects: sprint.projectIds.map((id) => projects.find((project) => project.id === id)).filter((project): project is Project => Boolean(project)),
+        };
+      });
+      return next;
+    });
+  }, [projects, sprints]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -101,7 +142,7 @@ export default function DsrLayout() {
         </div>
       </aside>
 
-      <div className="lg:pl-[252px]">
+      <div className="dsr-main-content lg:pl-[252px]">
         <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-5 backdrop-blur md:px-8">
           <div className="flex items-center gap-3">
             <button onClick={() => setMobileOpen(true)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden" aria-label="Open navigation"><Menu size={20} /></button>
@@ -115,7 +156,7 @@ export default function DsrLayout() {
           </div>
         </header>
         <main className="min-h-[calc(100vh-72px)] p-5 md:p-8">
-          <Outlet context={{ projects, setProjects, sprints, setSprints, activeSprintId, setActiveSprintId }} />
+          <Outlet context={{ projects, setProjects, sprints, setSprints, activeSprintId, setActiveSprintId, dailySnapshots }} />
         </main>
       </div>
     </div>

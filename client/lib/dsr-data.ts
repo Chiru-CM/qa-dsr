@@ -244,7 +244,7 @@ const makeProject = (
     blockers: [],
     execution,
     risks: [],
-    notes: "Weekly DSR update for the QA and automation workstream.",
+    notes: "",
     functionalityStatus: status === "Completed" ? "Completed" : status === "Yet to Start" ? "Yet to Start" : "In Progress",
     nonFunctionalityStatus: status === "Completed" ? "Completed" : status === "Yet to Start" ? "Yet to Start" : "In Progress",
     automationStatus: status === "Completed" ? "Completed" : status === "Yet to Start" ? "Yet to Start" : "In Progress",
@@ -313,6 +313,7 @@ export const cloneProjects = () => JSON.parse(JSON.stringify(initialProjects)) a
 
 export const normalizeProjects = (projects: Project[]) => projects.map((project) => ({
   ...project,
+  notes: ["Weekly DSR update for the QA and automation workstream.", "New DSR project. Add the initial execution details below."].includes(project.notes) ? "" : project.notes,
   blockers: project.blockers.map((blocker) => ({
     ...blocker,
     currentStatus: blocker.currentStatus ?? ("status" in blocker ? String(blocker.status) : ""),
