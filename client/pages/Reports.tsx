@@ -199,7 +199,7 @@ export default function Reports() {
       {missingHistory && <div className="rounded-xl border border-[#f2dfaa] bg-[#fffaf0] px-4 py-3 text-xs leading-5 text-[#8a6829]"><strong>Historical snapshot unavailable.</strong> This date predates saved daily history, so this report shows the current project details rather than a verified past-day state.</div>}
 
       <div className="flex items-end justify-between gap-3 px-1"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#31a896]">Portfolio detail</p><h2 className="mt-1 text-lg font-bold text-slate-900">Project-by-project pulse</h2></div><p className="text-[10px] font-semibold text-slate-400">{reportProjects.length} {reportProjects.length === 1 ? "PROJECT" : "PROJECTS"}</p></div>
-      <div className="space-y-2">{reportProjects.map((project, index) => <ProjectReportCard key={project.id} project={project} index={index} />)}</div>
+      <div className="sprint-report-project-list space-y-4">{reportProjects.map((project, index) => <ProjectReportCard key={project.id} project={project} index={index} />)}</div>
       <footer className="flex flex-col justify-between gap-1 border-t border-slate-200 px-1 pt-3 text-[10px] font-medium text-slate-400 sm:flex-row"><span>QALens · QA Engineering</span><span>{snapshot ? `Snapshot captured ${formatDate(snapshot.date)}` : "Generated from current project data"}</span></footer>
     </div>}
   </div>;
