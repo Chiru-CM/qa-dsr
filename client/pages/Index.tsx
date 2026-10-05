@@ -28,23 +28,23 @@ function ProjectStatusGrid({ projects, onRemoveProject }: { projects: Project[];
     return <EmptyState title="No projects in this sprint yet" description="Add a project to see its status and four-category execution overview." />;
   }
 
-  return <div className="space-y-2">
+  return <div className="space-y-1.5">
     {projects.map((project) => (
-      <article key={project.id} className="rounded-xl border border-slate-100 bg-white p-3 transition hover:border-[#c9e9e3]">
-        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+      <article key={project.id} className="rounded-lg border border-slate-100 bg-white p-2.5 transition hover:border-[#c9e9e3]">
+        <div className="flex flex-col justify-between gap-1.5 sm:flex-row sm:items-center">
           <Link to={`/projects/${project.id}`} state={{ fromSprint: true }} className="group min-w-0">
-            <p className="truncate text-sm font-bold text-slate-800 transition group-hover:text-[#218f82]">{project.name}</p>
-            <p className="mt-1 text-[11px] text-slate-400">{project.owner || "Unassigned"} · Open project details</p>
+            <p className="truncate text-[13px] font-bold text-slate-800 transition group-hover:text-[#218f82]">{project.name}</p>
+            <p className="mt-0.5 text-[10px] text-slate-400">{project.owner || "Unassigned"} · Open project details</p>
           </Link>
-          <div className="flex items-center gap-2"><StatusBadge status={project.status} compact /><button onClick={() => onRemoveProject(project.id)} className="rounded-lg p-2 text-slate-400 transition hover:bg-[#fff0ed] hover:text-[#c65e52]" aria-label={`Remove ${project.name} from sprint`} title="Remove from sprint"><FolderMinus size={15} /></button></div>
+          <div className="flex items-center gap-1.5"><StatusBadge status={project.status} compact /><button onClick={() => onRemoveProject(project.id)} className="rounded-md p-1.5 text-slate-400 transition hover:bg-[#fff0ed] hover:text-[#c65e52]" aria-label={`Remove ${project.name} from sprint`} title="Remove from sprint"><FolderMinus size={14} /></button></div>
         </div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-2 grid grid-cols-2 gap-1.5 md:grid-cols-4">
           {sprintCategories.map((category) => {
             const stage = project.stages.find((item) => normalize(item.name) === normalize(category));
             const status: StageStatus = stage?.status ?? "N/A";
-            return <div key={category} className="flex min-h-[56px] flex-col justify-between rounded-lg bg-slate-50/80 px-2.5 py-2">
+            return <div key={category} className="flex min-h-[48px] flex-col justify-between rounded-md bg-slate-50/80 px-2 py-1.5">
               <p className="text-[10px] font-semibold leading-4 text-slate-500">{category}</p>
-              <div className="mt-1.5"><StatusBadge status={status} compact /></div>
+              <div className="mt-1"><StatusBadge status={status} compact /></div>
             </div>;
           })}
         </div>
