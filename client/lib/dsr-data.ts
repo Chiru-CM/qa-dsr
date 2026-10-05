@@ -99,7 +99,11 @@ export interface Blocker {
   description: string;
   impact: number;
   status: RecordStatus;
+  completion?: number | null;
+  bugs?: string[];
   notes: string;
+  owner?: string;
+  poc?: string;
 }
 
 export interface ExecutionItem {
