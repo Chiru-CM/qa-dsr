@@ -98,12 +98,8 @@ export interface Blocker {
   id: string;
   description: string;
   impact: number;
-  status: RecordStatus;
-  completion?: number | null;
-  bugs?: string[];
+  currentStatus: string;
   notes: string;
-  owner?: string;
-  poc?: string;
 }
 
 export interface ExecutionItem {
@@ -258,7 +254,7 @@ const makeProject = (
 
 export const initialProjects: Project[] = [
   makeProject("SafeQ Cloud", "In Progress", ["Completed", "Completed", "Completed", "Completed", "Deferred"], {
-    blockers: [{ id: "scl-blocker", description: "Send to OCR File", impact: 5, status: "Blocked", notes: "Special package / license is not available on the server. Follow up with ISV." }],
+    blockers: [{ id: "scl-blocker", description: "Send to OCR File", impact: 5, currentStatus: "Blocked", notes: "Special package / license is not available on the server. Follow up with ISV." }],
     execution: [
       item("Functionality", 100, { bugs: ["SCL-941", "SCL-949", "SCL-1027", "1043"] }),
       item("Non-Functionality", 100),
@@ -269,14 +265,14 @@ export const initialProjects: Project[] = [
     notes: "OxPD and Workpath execution are complete. Automation is deferred to the next release because of a script issue.",
   }),
   makeProject("MyQ Roger", "In Progress", ["Completed", "In Progress", "In Progress", "In Progress", "Yet to Start", "Yet to Start", "Yet to Start"], {
-    blockers: [{ id: "roger-blocker", description: "Universal print", impact: 5, status: "Blocked", notes: "Admin privilege is missing in the reseller account. Meeting with the MyQ team is planned." }],
+    blockers: [{ id: "roger-blocker", description: "Universal print", impact: 5, currentStatus: "Blocked", notes: "Admin privilege is missing in the reseller account. Meeting with the MyQ team is planned." }],
     execution: [item("Functionality", 0, { notes: "MyQ Roger bugs" }), item("Card Reader", 0), item("Non-Functionality", 0), item("Automation", 0)],
   }),
   makeProject("HPCR", "Completed", ["Completed", "Completed", "Completed", "Completed", "Completed"], {
     blockers: [
-      { id: "hpcr-email", description: "Scan to Email", impact: 0, status: "Monitoring", notes: "SCL-1569. Server restart is currently needed to remedy failing email jobs; Upland is investigating." },
-      { id: "hpcr-sharepoint", description: "Scan to Me", impact: 0, status: "Monitoring", notes: "SCL-1570. Reproduction details and logs were sent to Upland." },
-      { id: "hpcr-mobile", description: "Mobile Apps", impact: 0, status: "Open", notes: "SCL-1549. Waiting for the components needed to make this work." },
+      { id: "hpcr-email", description: "Scan to Email", impact: 0, currentStatus: "Monitoring", notes: "SCL-1569. Server restart is currently needed to remedy failing email jobs; Upland is investigating." },
+      { id: "hpcr-sharepoint", description: "Scan to Me", impact: 0, currentStatus: "Monitoring", notes: "SCL-1570. Reproduction details and logs were sent to Upland." },
+      { id: "hpcr-mobile", description: "Mobile Apps", impact: 0, currentStatus: "Open", notes: "SCL-1549. Waiting for the components needed to make this work." },
     ],
     execution: [item("Functionality", 100, { bugs: ["HPCR Bugs"], notes: "HP CR Fax deferred due to environment availability." }), item("Card Reader", null, { notes: "Card Reader testing not applicable." }), item("Non-Functionality", 100), item("Automation", 100), item("Coaster Sanity", 100)],
   }),
@@ -287,14 +283,14 @@ export const initialProjects: Project[] = [
   makeProject("SafeQ Cloud Workpath", "Completed", ["Completed", "Completed", "Completed", "Completed", "Completed"], { execution: [item("Functionality", 100, { bugs: ["SafeQ Cloud Bugs"] }), item("Card Reader", 100), item("Non-Functionality", 100), item("Automation", 100), item("Coaster Sanity", 100), item("New Features Exploratory", 100)] }),
   makeProject("MyQ X", "Completed", ["Completed", "Completed", "Completed", "Completed", "Completed"], { execution: [item("Functionality", 100, { bugs: ["MyQ Bugs"] }), item("Card Reader", 100), item("Non-Functionality", 100), item("Automation", 100), item("Fleet Sanity", 100), item("Coaster Sanity", 100), item("New Features Exploratory", 100)], risks: [{ id: "myqx-risk", description: "BT1T95 card readers are not supported by MyQ X.", notes: "Results were set to N/A and an enhancement request was submitted.", status: "Monitoring", owner: "QA Engineering" }] }),
   makeProject("NDD Print OXPd", "In Progress", ["Completed", "Completed", "Completed", "Completed", "Completed", "Yet to Start"], { execution: [item("Setup Test Case Design", 100), item("Functional Test Case Design", 100), item("Non-Functional Test Case Design", 100), item("Functionality", 100), item("Card Reader", 100), item("Non-Functionality", 100), item("Automation - Print", 100), item("Automation - Scan", null, { notes: "No plugin available. Planned for next release." }), item("New Features Exploratory", 100, { owner: "CP", poc: "Liander/Ambrose Swamy", notes: "NDD team is investigating the QR code issue on the device control panel." })] }),
-  makeProject("NDD Print Workpath", "Yet to Start", ["Completed", "Completed", "Failed", "Yet to Start"], { blockers: [{ id: "ndd-wp-blocker", description: "Automation scan plugin", impact: 0, status: "Deferred", notes: "No plugin available. Planned for next release." }], execution: [item("Functionality", 100), item("Card Reader", 100), item("Non-Functionality", 100), item("Automation - Print", 0, { bugs: ["RDLINT-6134"], notes: "NDD Workpath print duration failure.", owner: "Deepika BH", poc: "Vivek/Rohit" }), item("Automation - Scan", null, { notes: "No plugin available." }), item("New Features Exploratory", null, { notes: "Tracked as part of OxPD." })], automationStatus: "Failed" }),
+  makeProject("NDD Print Workpath", "Yet to Start", ["Completed", "Completed", "Failed", "Yet to Start"], { blockers: [{ id: "ndd-wp-blocker", description: "Automation scan plugin", impact: 0, currentStatus: "Deferred", notes: "No plugin available. Planned for next release." }], execution: [item("Functionality", 100), item("Card Reader", 100), item("Non-Functionality", 100), item("Automation - Print", 0, { bugs: ["RDLINT-6134"], notes: "NDD Workpath print duration failure.", owner: "Deepika BH", poc: "Vivek/Rohit" }), item("Automation - Scan", null, { notes: "No plugin available." }), item("New Features Exploratory", null, { notes: "Tracked as part of OxPD." })], automationStatus: "Failed" }),
   makeProject("SafeQ Cloud NPI - Workpath", "In Progress", ["Completed", "Completed", "Completed", "Completed"], { execution: [item("Functionality", 100), item("Card Reader", 100), item("Non-Functionality", 100), item("Automation - Print", 100, { owner: "Automation Team (Appanna)", poc: "Rohit/Vivek", notes: "Automation run with 59% success. Logs submitted to automation team." }), item("Automation - Scan", 0, { bugs: ["SWQATR-1254"], notes: "Automation run completed with failures." })], automationStatus: "Failed" }),
   makeProject("HP Secure Print - NPI Blades", "In Progress", ["Completed", "Completed", "Yet to Start", "Yet to Start"], { execution: [item("Hardware Readiness", 100), item("Solution Readiness", 100), item("Functional Test Case Design", 100), item("Functionality", 100), item("Card Reader", 100), item("Non-Functionality", 100), item("Defect Validation", 100), item("Automation - Print", null, { bugs: ["RDLINT-6170"], poc: "ISV" }), item("Automation - Scan", null, { bugs: ["RDLINT-6170"], poc: "ISV" })] }),
   makeProject("HP Secure Print - NPI Heroes", "In Progress", ["Completed", "Completed", "Yet to Start", "Yet to Start"], { execution: [item("Hardware Readiness", 100), item("Functionality", 100), item("Card Reader", 100), item("Non-Functionality", 100), item("Automation - Print", null, { bugs: ["RDLINT-6170"], poc: "ISV" }), item("Automation - Scan", null, { bugs: ["RDLINT-6170"], poc: "ISV" })] }),
   makeProject("HP Advanced - NPI", "Completed", ["Completed", "Completed", "Completed", "Completed"], { execution: [item("Hardware Readiness", 100), item("Functionality", 100, { owner: "Ravi/Chandra", poc: "Ryan/ISV/Haribabu", notes: "Functionality testing is completed." }), item("Card Reader", 100), item("Non-Functionality", 100), item("Defect Validation", 100), item("New Features", 100, { owner: "Nandhu/CP", poc: "Ryan/ISV/Haribabu", notes: "Driverless Print Support (IPP/IPPS) validated successfully." }), item("Automation - Print", 100), item("Automation - Scan", 100)] }),
   makeProject("HP Advanced - Fleet", "Yet to Start", ["Yet to Start", "Yet to Start", "Yet to Start", "Yet to Start"], { execution: [item("Hardware Readiness", 50, { owner: "Baba" }), item("Functionality", null), item("Card Reader", null), item("Non-Functionality", null), item("Defect Validation", null, { owner: "Nandhu/CP", poc: "Ryan/ISV/Haribabu" }), item("New Features", null), item("Automation - Print", null), item("Automation - Scan", null)], automationStatus: "Yet to Start", notes: "Upgrade to the latest version is in progress; automation will start after the upgrade." }),
   makeProject("PaperCut MF - 26.0.3", "Completed", ["Completed", "Completed", "Completed", "Completed"], { execution: [item("Hardware Readiness", 100), item("Functionality", 100), item("Card Reader", 100), item("Non-Functionality", 100), item("Defect Validation", 100, { owner: "Sai Ram/Manoj", poc: "Preethi" }), item("New Features", 100, { owner: "Ravi/Chandrashekar", poc: "Preethi" }), item("Automation - Print", 100), item("Automation - Scan", 100)] }),
-  makeProject("PaperCut MF - 26.0.5", "Yet to Start", ["Yet to Start", "Yet to Start", "In Progress", "Yet to Start"], { blockers: [{ id: "papercut-automation", description: "Automation result failures", impact: 0, status: "Open", notes: "Logs submitted to the automation team for verification." }], execution: [item("Hardware Readiness", 50, { owner: "Manoj" }), item("Functionality", null), item("Card Reader", null), item("Non-Functionality", null), item("Defect Validation", null), item("New Features", null), item("Automation - Print", 0, { bugs: ["RDLINT-6204"], owner: "Chitack", poc: "Vivek/Rohit", notes: "Automation duration run completed with failure." }), item("Automation - Scan", null, { owner: "Chitack", poc: "Vivek/Rohit" })], automationStatus: "In Progress" }),
+  makeProject("PaperCut MF - 26.0.5", "Yet to Start", ["Yet to Start", "Yet to Start", "In Progress", "Yet to Start"], { blockers: [{ id: "papercut-automation", description: "Automation result failures", impact: 0, currentStatus: "Open", notes: "Logs submitted to the automation team for verification." }], execution: [item("Hardware Readiness", 50, { owner: "Manoj" }), item("Functionality", null), item("Card Reader", null), item("Non-Functionality", null), item("Defect Validation", null), item("New Features", null), item("Automation - Print", 0, { bugs: ["RDLINT-6204"], owner: "Chitack", poc: "Vivek/Rohit", notes: "Automation duration run completed with failure." }), item("Automation - Scan", null, { owner: "Chitack", poc: "Vivek/Rohit" })], automationStatus: "In Progress" }),
 ];
 
 export const statusTone = (status: string) => {
@@ -317,6 +313,10 @@ export const cloneProjects = () => JSON.parse(JSON.stringify(initialProjects)) a
 
 export const normalizeProjects = (projects: Project[]) => projects.map((project) => ({
   ...project,
+  blockers: project.blockers.map((blocker) => ({
+    ...blocker,
+    currentStatus: blocker.currentStatus ?? ("status" in blocker ? String(blocker.status) : ""),
+  })),
   execution: project.execution.map((entry) => ({
     ...entry,
     completion: entry.completion !== null && entry.completion > 1 ? entry.completion / 100 : entry.completion,
