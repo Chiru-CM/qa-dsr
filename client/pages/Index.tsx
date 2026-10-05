@@ -23,20 +23,45 @@ const formatDate = (value: string) => new Intl.DateTimeFormat("en-US", {
 const formatDateRange = (start: string, end: string) => `${formatDate(start)} – ${formatDate(end)}`;
 const todayLabel = () => new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
+type ExecutionSummaryStatus = "Completed" | "In Progress" | "Blocked" | "Not Started";
+
+const executionCardTones: Record<ExecutionSummaryStatus, string> = {
+  Completed: "border-[#bce8d8] bg-[#f4fbf8] shadow-[0_2px_10px_rgba(55,185,165,0.08)] hover:border-[#37b9a5]",
+  "In Progress": "border-[#c9dcfb] bg-[#f6f9ff] shadow-[0_2px_10px_rgba(97,149,220,0.08)] hover:border-[#6195dc]",
+  Blocked: "border-[#f7c9c2] bg-[#fff8f6] shadow-[0_2px_10px_rgba(211,109,95,0.08)] hover:border-[#ef806f]",
+  "Not Started": "border-slate-200 bg-white shadow-sm hover:border-slate-300",
+};
+
+const executionStatusTextTones: Record<ExecutionSummaryStatus, string> = {
+  Completed: "text-[#20866f]",
+  "In Progress": "text-[#4071ba]",
+  Blocked: "text-[#c65e52]",
+  "Not Started": "text-slate-500",
+};
+
+function projectExecutionStatus(project: Project): ExecutionSummaryStatus {
+  const statuses = sprintCategories.map((category) => project.stages.find((stage) => normalize(stage.name) === normalize(category))?.status ?? "N/A");
+  if (statuses.every((status) => status === "Completed" || status === "Complete")) return "Completed";
+  if (statuses.some((status) => status === "Blocked" || status === "Failed")) return "Blocked";
+  if (statuses.every((status) => ["Yet to Start", "Not Yet Started", "N/A"].includes(status))) return "Not Started";
+  return "In Progress";
+}
+
 function ProjectStatusGrid({ projects, onRemoveProject }: { projects: Project[]; onRemoveProject: (projectId: string) => void }) {
   if (!projects.length) {
     return <EmptyState title="No projects in this sprint yet" description="Add a project to see its status and four-category execution overview." />;
   }
 
   return <div className="space-y-1.5">
-    {projects.map((project) => (
-      <article key={project.id} className="rounded-lg border border-slate-100 bg-white p-2.5 transition hover:border-[#c9e9e3]">
+    {projects.map((project) => {
+      const executionStatus = projectExecutionStatus(project);
+      return <article key={project.id} className={`rounded-lg border p-2.5 transition ${executionCardTones[executionStatus]}`}>
         <div className="flex flex-col justify-between gap-1.5 sm:flex-row sm:items-center">
           <Link to={`/projects/${project.id}`} state={{ fromSprint: true }} className="group min-w-0">
             <p className="truncate text-[13px] font-bold text-slate-800 transition group-hover:text-[#218f82]">{project.name}</p>
-            <p className="mt-0.5 text-[10px] text-slate-400">{project.owner || "Unassigned"} · Open project details</p>
+            <p className="mt-0.5 text-[10px] text-slate-500">{project.owner || "Unassigned"} · <span className={`font-bold ${executionStatusTextTones[executionStatus]}`}>{executionStatus}</span> · Open project details</p>
           </Link>
-          <div className="flex items-center gap-1.5"><StatusBadge status={project.status} compact /><button onClick={() => onRemoveProject(project.id)} className="rounded-md p-1.5 text-slate-400 transition hover:bg-[#fff0ed] hover:text-[#c65e52]" aria-label={`Remove ${project.name} from sprint`} title="Remove from sprint"><FolderMinus size={14} /></button></div>
+          <button onClick={() => onRemoveProject(project.id)} className="self-start rounded-md p-1.5 text-slate-400 transition hover:bg-[#fff0ed] hover:text-[#c65e52] sm:self-auto" aria-label={`Remove ${project.name} from sprint`} title="Remove from sprint"><FolderMinus size={14} /></button>
         </div>
         <div className="mt-2 grid grid-cols-2 gap-1.5 md:grid-cols-4">
           {sprintCategories.map((category) => {
@@ -48,8 +73,8 @@ function ProjectStatusGrid({ projects, onRemoveProject }: { projects: Project[];
             </div>;
           })}
         </div>
-      </article>
-    ))}
+      </article>;
+    })}
   </div>;
 }
 
