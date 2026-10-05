@@ -28,11 +28,14 @@ export const DASHBOARD_PROJECT_IDS = [
   "papercut-mf-26-0-5",
 ] as const;
 
+export type SprintStatus = "Not Started" | "In Progress" | "Completed" | "Blocked";
+
 export interface Sprint {
   id: string;
   name: string;
   startDate: string;
   endDate: string;
+  status: SprintStatus;
   projectIds: string[];
 }
 
@@ -42,6 +45,7 @@ export const initialSprints: Sprint[] = [
     name: "September 2025 Sprint",
     startDate: "2025-09-01",
     endDate: "2025-09-30",
+    status: "In Progress",
     projectIds: [...DASHBOARD_PROJECT_IDS],
   },
 ];

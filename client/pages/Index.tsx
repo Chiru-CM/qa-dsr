@@ -4,7 +4,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
 import { Modal } from "@/components/dsr/Modal";
 import { EmptyState, PageTitle, StatusBadge } from "@/components/dsr/DsrPrimitives";
-import { statusOptions, type Project, type ProjectStatus, type Sprint, type StageStatus } from "@/lib/dsr-data";
+import { statusOptions, type Project, type ProjectStatus, type Sprint, type SprintStatus, type StageStatus } from "@/lib/dsr-data";
 
 const sprintCategories = [
   "Functionality Execution",
@@ -28,23 +28,23 @@ function ProjectStatusGrid({ projects, onRemoveProject }: { projects: Project[];
     return <EmptyState title="No projects in this sprint yet" description="Add a project to see its status and four-category execution overview." />;
   }
 
-  return <div className="space-y-3">
+  return <div className="space-y-2">
     {projects.map((project) => (
-      <article key={project.id} className="rounded-xl border border-slate-100 bg-white p-4 transition hover:border-[#c9e9e3]">
-        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+      <article key={project.id} className="rounded-xl border border-slate-100 bg-white p-3 transition hover:border-[#c9e9e3]">
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
           <Link to={`/projects/${project.id}`} state={{ fromSprint: true }} className="group min-w-0">
             <p className="truncate text-sm font-bold text-slate-800 transition group-hover:text-[#218f82]">{project.name}</p>
             <p className="mt-1 text-[11px] text-slate-400">{project.owner || "Unassigned"} · Open project details</p>
           </Link>
           <div className="flex items-center gap-2"><StatusBadge status={project.status} compact /><button onClick={() => onRemoveProject(project.id)} className="rounded-lg p-2 text-slate-400 transition hover:bg-[#fff0ed] hover:text-[#c65e52]" aria-label={`Remove ${project.name} from sprint`} title="Remove from sprint"><FolderMinus size={15} /></button></div>
         </div>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {sprintCategories.map((category) => {
             const stage = project.stages.find((item) => normalize(item.name) === normalize(category));
             const status: StageStatus = stage?.status ?? "N/A";
-            return <div key={category} className="flex min-h-[66px] flex-col justify-between rounded-lg bg-slate-50/80 px-3 py-2.5">
+            return <div key={category} className="flex min-h-[56px] flex-col justify-between rounded-lg bg-slate-50/80 px-2.5 py-2">
               <p className="text-[10px] font-semibold leading-4 text-slate-500">{category}</p>
-              <div className="mt-2"><StatusBadge status={status} compact /></div>
+              <div className="mt-1.5"><StatusBadge status={status} compact /></div>
             </div>;
           })}
         </div>
@@ -87,7 +87,7 @@ export default function Index() {
       setSprintError("The end date must be on or after the start date.");
       return;
     }
-    const sprint: Sprint = { id: `sprint-${Date.now()}`, name, startDate, endDate, projectIds: [] };
+    const sprint: Sprint = { id: `sprint-${Date.now()}`, name, startDate, endDate, status: "In Progress", projectIds: [] };
     setSprints((current) => [sprint, ...current]);
     setExpandedSprintIds((current) => new Set(current).add(sprint.id));
     setActiveSprintId(sprint.id);
@@ -113,6 +113,10 @@ export default function Index() {
       ? { ...sprint, projectIds: [...sprint.projectIds, existingProjectId] }
       : sprint));
     closeProjectModal();
+  };
+
+  const updateSprintStatus = (sprintId: string, status: SprintStatus) => {
+    setSprints((current) => current.map((sprint) => sprint.id === sprintId ? { ...sprint, status } : sprint));
   };
 
   const removeProjectFromSprint = (sprintId: string, projectId: string) => {
@@ -163,16 +167,19 @@ export default function Index() {
         const isExpanded = expandedSprintIds.has(sprint.id);
         const sprintProjects = projectsForSprint(sprint);
         return <section key={sprint.id} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_3px_15px_rgba(20,40,70,0.03)]">
-          <button type="button" onClick={() => toggleSprint(sprint.id)} aria-expanded={isExpanded} aria-controls={`sprint-content-${sprint.id}`} className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-slate-50/70 md:px-6">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl transition ${isExpanded ? "bg-[#eaf8f5] text-[#218f82]" : "bg-slate-100 text-slate-500"}`}><ChevronDown size={17} className={`transition-transform ${isExpanded ? "rotate-0" : "-rotate-90"}`} /></span>
-              <div className="min-w-0"><h2 className="truncate text-sm font-bold text-slate-800">{sprint.name}</h2><p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-slate-400"><CalendarDays size={13} />{formatDateRange(sprint.startDate, sprint.endDate)}</p></div>
-            </div>
-            <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500">{sprintProjects.length} {sprintProjects.length === 1 ? "project" : "projects"}</span>
-          </button>
+          <div className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center md:px-4">
+            <button type="button" onClick={() => toggleSprint(sprint.id)} aria-expanded={isExpanded} aria-controls={`sprint-content-${sprint.id}`} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl py-1 text-left transition hover:bg-slate-50/70">
+              <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg transition ${isExpanded ? "bg-[#eaf8f5] text-[#218f82]" : "bg-slate-100 text-slate-500"}`}><ChevronDown size={16} className={`transition-transform ${isExpanded ? "rotate-0" : "-rotate-90"}`} /></span>
+              <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5"><span className="truncate text-sm font-bold text-slate-800">{sprint.name}</span><span className="flex items-center gap-1 text-[11px] font-medium text-slate-400"><CalendarDays size={12} />{formatDateRange(sprint.startDate, sprint.endDate)}</span></span>
+              <span className="ml-auto shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">{sprintProjects.length} {sprintProjects.length === 1 ? "project" : "projects"}</span>
+            </button>
+            <select aria-label={`Status for ${sprint.name}`} value={sprint.status ?? "In Progress"} onChange={(event) => updateSprintStatus(sprint.id, event.target.value as SprintStatus)} className={`h-8 shrink-0 rounded-full border px-3 text-[11px] font-semibold outline-none ${sprint.status === "Completed" ? "border-[#bce8d8] bg-[#e7f7f1] text-[#20866f]" : sprint.status === "Blocked" ? "border-[#f7c9c2] bg-[#fff0ed] text-[#c65e52]" : sprint.status === "Not Started" ? "border-slate-200 bg-slate-100 text-slate-500" : "border-[#c9dcfb] bg-[#eaf2ff] text-[#4071ba]"}`}>
+              {["Not Started", "In Progress", "Blocked", "Completed"].map((status) => <option key={status} value={status}>{status}</option>)}
+            </select>
+          </div>
 
-          {isExpanded && <div id={`sprint-content-${sprint.id}`} className="border-t border-slate-100 bg-slate-50/40 p-4 md:p-5">
-            <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          {isExpanded && <div id={`sprint-content-${sprint.id}`} className="border-t border-slate-100 bg-slate-50/40 p-3 md:p-4">
+            <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
               <div><h3 className="text-sm font-bold text-slate-800">Project execution overview</h3><p className="mt-0.5 text-[11px] text-slate-400">Overall project status and progress across the four execution categories.</p></div>
               <button onClick={() => openProjectModal(sprint.id)} className="inline-flex items-center justify-center gap-2 self-start rounded-lg bg-[#10263d] px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#183752] sm:self-auto"><FolderPlus size={14} />Add project</button>
             </div>
