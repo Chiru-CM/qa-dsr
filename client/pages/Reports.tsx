@@ -41,6 +41,13 @@ const statusDot: Record<string, string> = {
   "Needs attention": "bg-[#ef806f]",
 };
 
+const statusShadows: Record<string, string> = {
+  Completed: "shadow-[0_6px_20px_rgba(32,134,111,0.16)]",
+  "In progress": "shadow-[0_6px_20px_rgba(64,113,186,0.16)]",
+  "Not started": "shadow-[0_6px_20px_rgba(100,116,139,0.12)]",
+  "Needs attention": "shadow-[0_6px_20px_rgba(198,94,82,0.17)]",
+};
+
 const safeFileName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
 function ProjectReportCard({ project, index }: { project: Project; index: number }) {
@@ -48,7 +55,7 @@ function ProjectReportCard({ project, index }: { project: Project; index: number
   const completion = projectCompletion(project);
 
   return (
-    <article className="sprint-report-card overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_3px_15px_rgba(20,40,70,0.035)]">
+    <article className={`sprint-report-card overflow-hidden rounded-2xl border border-slate-200/80 bg-white ${statusShadows[status]}`}>
       <div className="sprint-report-project-heading flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-start sm:justify-between md:p-6">
         <div className="flex min-w-0 items-start gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#edf7f6] text-xs font-bold text-[#218f82]">{String(index + 1).padStart(2, "0")}</span>
