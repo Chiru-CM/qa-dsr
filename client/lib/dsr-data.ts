@@ -91,6 +91,7 @@ export interface Stage {
   id: string;
   name: string;
   status: StageStatus;
+  isCustom?: boolean;
 }
 
 export interface Blocker {
