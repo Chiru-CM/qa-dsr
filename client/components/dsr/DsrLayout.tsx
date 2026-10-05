@@ -142,7 +142,7 @@ export default function DsrLayout() {
         </div>
       </aside>
 
-      <div className="lg:pl-[252px]">
+      <div className="dsr-main-content lg:pl-[252px]">
         <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-slate-200/80 bg-white/90 px-5 backdrop-blur md:px-8">
           <div className="flex items-center gap-3">
             <button onClick={() => setMobileOpen(true)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden" aria-label="Open navigation"><Menu size={20} /></button>

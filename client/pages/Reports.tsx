@@ -49,7 +49,7 @@ function ProjectReportCard({ project, index }: { project: Project; index: number
 
   return (
     <article className="sprint-report-card overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_3px_15px_rgba(20,40,70,0.035)]">
-      <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-start sm:justify-between md:p-6">
+      <div className="sprint-report-project-heading flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-start sm:justify-between md:p-6">
         <div className="flex min-w-0 items-start gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#edf7f6] text-xs font-bold text-[#218f82]">{String(index + 1).padStart(2, "0")}</span>
           <div className="min-w-0">
@@ -63,12 +63,12 @@ function ProjectReportCard({ project, index }: { project: Project; index: number
       <div className="space-y-4 p-5 md:p-6">
         <section className="mb-4 rounded-xl border border-slate-200/80 bg-white p-4">
           <SectionHeading title="High level status report" description="Project-specific stages from the DSR workbook." />
-          <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-4">{project.stages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5"><div className="mb-1.5 flex items-start justify-between gap-1.5"><p className="text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#37b9a5]" /></div><div className="mt-1"><StatusBadge status={stage.status} compact /></div></div>)}</div>
+          <div className="sprint-report-stage-grid grid gap-2 sm:grid-cols-2 md:grid-cols-4">{project.stages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5"><div className="mb-1.5 flex items-start justify-between gap-1.5"><p className="text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#37b9a5]" /></div><div className="mt-1"><StatusBadge status={stage.status} compact /></div></div>)}</div>
         </section>
 
         {project.blockers.length > 0 && <section className="rounded-xl border border-slate-200/80 p-4">
           <div className="mb-3 flex items-center gap-2"><ShieldAlert size={15} className="text-[#c65e52]" /><div><h4 className="text-sm font-bold text-slate-800">Blockers</h4><p className="mt-0.5 text-[11px] text-slate-400">Issues impacting delivery or test case coverage.</p></div></div>
-          <div className="space-y-2">{project.blockers.map((blocker) => <div key={blocker.id} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50/50 p-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.55fr_0.85fr_1.5fr]">
+          <div className="space-y-2">{project.blockers.map((blocker) => <div key={blocker.id} className="sprint-report-blocker-row grid gap-3 rounded-lg border border-slate-100 bg-slate-50/50 p-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.55fr_0.85fr_1.5fr]">
             <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Description</p><p className="mt-1 text-xs font-bold text-slate-700">{blocker.description}</p></div>
             <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Impacted test cases</p><p className="mt-1 text-xs font-semibold text-slate-600">{blocker.impact}%</p></div>
             <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Current status</p><div className="mt-1"><StatusBadge status={blocker.currentStatus} compact /></div></div>
@@ -79,14 +79,14 @@ function ProjectReportCard({ project, index }: { project: Project; index: number
         <section className="rounded-xl border border-slate-200/80 p-4">
           <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Current execution status</h4><p className="mt-0.5 text-[11px] text-slate-400">Completion, defects, ownership, and handoffs for each execution area.</p></div>
           {project.execution.length ? <div className="overflow-hidden rounded-lg border border-slate-100">
-            <div className="hidden grid-cols-[1.15fr_1.1fr_1fr_1.7fr_0.85fr_0.95fr] gap-3 border-b border-slate-100 bg-slate-50 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-slate-400 md:grid"><span>Execution area</span><span>Completion</span><span>Bugs submitted</span><span>Additional notes</span><span>Owner</span><span>POC / SL</span></div>
-            {project.execution.map((entry) => <div key={entry.id} className="grid gap-3 border-b border-slate-100 p-3 last:border-b-0 md:grid-cols-[1.15fr_1.1fr_1fr_1.7fr_0.85fr_0.95fr] md:items-start">
-              <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Execution area</p><p className="mt-1 text-xs font-bold text-slate-700">{entry.area}</p></div>
-              <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Completion</p><div className="mt-1"><ProgressBar value={entry.completion} /></div></div>
-              <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Bugs submitted</p><div className="mt-1 flex flex-wrap gap-1">{entry.bugs.length ? entry.bugs.map((bug) => <span key={bug} className="rounded-md bg-[#fff4df] px-1.5 py-1 text-[9px] font-bold text-[#ae7d22]">{bug}</span>) : <span className="text-xs text-slate-400">—</span>}</div></div>
-              <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Additional notes</p><p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-500">{entry.notes || "—"}</p></div>
-              <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Owner</p><p className="mt-1 text-xs text-slate-600">{entry.owner || "—"}</p></div>
-              <div><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">POC / SL</p><p className="mt-1 text-xs text-slate-600">{entry.poc || "—"}</p></div>
+            <div className="sprint-report-execution-header hidden grid-cols-[1.15fr_1.1fr_1fr_1.7fr_0.85fr_0.95fr] gap-3 border-b border-slate-100 bg-slate-50 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-slate-400 md:grid"><span>Execution area</span><span>Completion</span><span>Bugs submitted</span><span>Additional notes</span><span>Owner</span><span>POC / SL</span></div>
+            {project.execution.map((entry) => <div key={entry.id} className="sprint-report-execution-row grid gap-3 border-b border-slate-100 p-3 last:border-b-0 md:grid-cols-[1.15fr_1.1fr_1fr_1.7fr_0.85fr_0.95fr] md:items-start">
+              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Execution area</p><p className="mt-1 text-xs font-bold text-slate-700">{entry.area}</p></div>
+              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Completion</p><div className="mt-1"><ProgressBar value={entry.completion} /></div></div>
+              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Bugs submitted</p><div className="mt-1 flex flex-wrap gap-1">{entry.bugs.length ? entry.bugs.map((bug) => <span key={bug} className="rounded-md bg-[#fff4df] px-1.5 py-1 text-[9px] font-bold text-[#ae7d22]">{bug}</span>) : <span className="text-xs text-slate-400">—</span>}</div></div>
+              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Additional notes</p><p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-500">{entry.notes || "—"}</p></div>
+              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Owner</p><p className="mt-1 text-xs text-slate-600">{entry.owner || "—"}</p></div>
+              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">POC / SL</p><p className="mt-1 text-xs text-slate-600">{entry.poc || "—"}</p></div>
             </div>)}
           </div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No execution items recorded.</p>}
         </section>
@@ -187,7 +187,7 @@ export default function Reports() {
           <div><div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.07] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[#8ee2d4]"><span className="h-1.5 w-1.5 rounded-full bg-[#37c7b1]" />QALens · Daily Sprint Pulse</div><h2 className="max-w-2xl text-2xl font-bold leading-tight tracking-tight text-white md:text-4xl">{selectedSprint?.name}</h2><p className="mt-2 flex items-center gap-2 text-sm font-medium text-slate-300"><CalendarDays size={15} className="text-[#7fd9ca]" />{formatDate(selectedDate, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}<span className="text-slate-500">·</span>{selectedSprint ? `${formatDate(selectedSprint.startDate)} – ${formatDate(selectedSprint.endDate)}` : ""}</p></div>
           <div className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 lg:min-w-[190px]"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Sprint status</p><div className="mt-2 flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#37c7b1]" /><span className="text-sm font-bold text-white">{snapshot?.sprintStatus ?? selectedSprint?.status ?? "In Progress"}</span></div><p className="mt-1 flex items-center gap-1.5 text-[10px] text-slate-400"><Clock3 size={11} />{snapshot ? "Snapshot saved" : "Live project data"}</p></div>
         </div>
-        <div className="relative mt-7 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="sprint-report-summary relative mt-7 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Projects</p><p className="mt-1 text-2xl font-bold text-white">{reportProjects.length}</p></div>
           <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Completed</p><p className="mt-1 text-2xl font-bold text-[#8ee2d4]">{counts.completed}</p></div>
           <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">In progress</p><p className="mt-1 text-2xl font-bold text-[#a9c9ff]">{counts.inProgress}</p></div>
