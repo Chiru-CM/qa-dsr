@@ -56,7 +56,7 @@ export default function DsrLayout() {
   const [activeSprintId, setActiveSprintId] = useState(() => sprints[0]?.id ?? "");
   const [dailySnapshots, setDailySnapshots] = useState<Record<string, SprintDailySnapshot>>(() => {
     const saved = localStorage.getItem("dsr-daily-snapshots");
-    return saved ? JSON.parse(saved) as Record<string, SprintDailySnapshot> : {};
+    return saved ? Object.fromEntries(Object.entries(JSON.parse(saved) as Record<string, SprintDailySnapshot>).map(([key, snapshot]) => [key, { ...snapshot, projects: normalizeProjects(snapshot.projects) }])) : {};
   });
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();

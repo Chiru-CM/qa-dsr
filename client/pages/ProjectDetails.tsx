@@ -42,7 +42,7 @@ export default function ProjectDetails() {
   const saveProject = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    updateProject((current) => ({ ...current, name: String(data.get("name") || current.name), owner: String(data.get("owner") || current.owner), status: String(data.get("status")) as ProjectStatus, notes: String(data.get("notes") || current.notes), lastUpdated: "20 Sep 2025" }));
+    updateProject((current) => ({ ...current, name: String(data.get("name") || current.name), owner: String(data.get("owner") || current.owner), status: String(data.get("status")) as ProjectStatus, notes: String(data.get("notes") ?? current.notes), lastUpdated: "20 Sep 2025" }));
     closeModal();
   };
   const updateStageStatus = (stageId: string, stageName: string, isCustom: boolean, status: StageStatus) => {

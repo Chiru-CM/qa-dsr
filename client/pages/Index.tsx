@@ -169,7 +169,7 @@ export default function Index() {
       blockers: [],
       execution: sprintCategories.map((area, index) => ({ id: `${id}-execution-${index}`, area, completion: null, bugs: [], notes: "", owner, poc: "" })),
       risks: [],
-      notes: "New DSR project. Add the initial execution details below.",
+      notes: "",
       functionalityStatus: "Yet to Start",
       nonFunctionalityStatus: "Yet to Start",
       automationStatus: "Yet to Start",

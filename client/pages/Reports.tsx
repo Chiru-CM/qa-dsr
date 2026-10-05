@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, CalendarDays, Check, CircleAlert, Clock3, Download, FileImage, FileText, Printer, ShieldAlert, Users } from "lucide-react";
+import { CalendarDays, Check, CircleAlert, Clock3, Download, FileImage, FileText, Printer, ShieldAlert, Users } from "lucide-react";
 import { toPng } from "html-to-image";
 import { useOutletContext } from "react-router-dom";
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
-import { PageTitle, ProgressBar, StatusBadge } from "@/components/dsr/DsrPrimitives";
+import { PageTitle, ProgressBar, SectionHeading, StatusBadge } from "@/components/dsr/DsrPrimitives";
 import { projectCompletion, type Project, type Sprint } from "@/lib/dsr-data";
 
 const localDate = () => {
@@ -41,21 +41,11 @@ const statusDot: Record<string, string> = {
   "Needs attention": "bg-[#ef806f]",
 };
 
-const defaultStageNames = ["Functionality Execution", "Non Functionality Execution", "Automation- Print", "Automation- Scan"];
-const normalizeStageName = (name: string) => name.toLowerCase().replace(/[^a-z]/g, "");
-
 const safeFileName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
 function ProjectReportCard({ project, index }: { project: Project; index: number }) {
   const status = executionStatus(project);
   const completion = projectCompletion(project);
-  const stages = [
-    ...defaultStageNames.map((name) => {
-      const stage = project.stages.find((item) => normalizeStageName(item.name) === normalizeStageName(name));
-      return { id: stage?.id ?? `default-${normalizeStageName(name)}`, name, status: stage?.status ?? "N/A" };
-    }),
-    ...project.stages.filter((stage) => stage.isCustom),
-  ];
 
   return (
     <article className="sprint-report-card overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_3px_15px_rgba(20,40,70,0.035)]">
@@ -71,9 +61,9 @@ function ProjectReportCard({ project, index }: { project: Project; index: number
       </div>
 
       <div className="space-y-4 p-5 md:p-6">
-        <section className="rounded-xl border border-slate-200/80 p-4">
-          <div className="mb-3 flex items-center justify-between gap-3"><div><h4 className="text-sm font-bold text-slate-800">High level status report</h4><p className="mt-0.5 text-[11px] text-slate-400">Project execution stages.</p></div><BarChart3 size={17} className="text-[#37b9a5]" /></div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{stages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-3"><p className="mb-2 text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><StatusBadge status={stage.status} compact /></div>)}</div>
+        <section className="mb-4 rounded-xl border border-slate-200/80 bg-white p-4">
+          <SectionHeading title="High level status report" description="Project-specific stages from the DSR workbook." />
+          <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-4">{project.stages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5"><div className="mb-1.5 flex items-start justify-between gap-1.5"><p className="text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#37b9a5]" /></div><div className="mt-1"><StatusBadge status={stage.status} compact /></div></div>)}</div>
         </section>
 
         {project.blockers.length > 0 && <section className="rounded-xl border border-slate-200/80 p-4">

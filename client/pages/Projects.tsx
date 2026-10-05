@@ -37,7 +37,7 @@ export default function Projects() {
       blockers: [],
       execution: ["Functionality Execution", "Non Functionality Execution", "Automation- Print", "Automation- Scan"].map((area, index) => ({ id: `${Date.now()}-execution-${index}`, area, completion: null, bugs: [], notes: "", owner, poc: "" })),
       risks: [],
-      notes: "New DSR project. Add the initial execution details below.",
+      notes: "",
       functionalityStatus: "Yet to Start",
       nonFunctionalityStatus: "Yet to Start",
       automationStatus: "Yet to Start",
