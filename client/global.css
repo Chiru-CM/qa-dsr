@@ -136,3 +136,56 @@
     white-space: pre;
   }
 }
+
+@media print {
+  @page {
+    margin: 10mm;
+  }
+
+  html,
+  body,
+  #root {
+    background: #fff !important;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  aside,
+  header,
+  .sprint-report-page-title,
+  .sprint-report-controls,
+  .sprint-report-alert {
+    display: none !important;
+  }
+
+  main {
+    min-height: 0 !important;
+    padding: 0 !important;
+  }
+
+  main > div {
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .sprint-report-print-area {
+    gap: 12px !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+  }
+
+  .sprint-report-hero {
+    break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .sprint-report-card {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+}
