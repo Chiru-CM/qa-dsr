@@ -10,6 +10,7 @@ type ModalType = "blocker" | "execution" | "risk" | "project" | "stage" | null;
 const recordStatuses: RecordStatus[] = ["Open", "Blocked", "Monitoring", "Resolved", "Deferred"];
 const defaultStageNames = ["Functionality Execution", "Non Functionality Execution", "Automation- Print", "Automation- Scan"];
 const normalizeStageName = (name: string) => name.toLowerCase().replace(/[^a-z]/g, "");
+const todayLabel = () => new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 const inputClass = "form-input";
 
 export default function ProjectDetails() {
@@ -42,7 +43,7 @@ export default function ProjectDetails() {
   const saveProject = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    updateProject((current) => ({ ...current, name: String(data.get("name") || current.name), owner: String(data.get("owner") || current.owner), status: String(data.get("status")) as ProjectStatus, notes: String(data.get("notes") ?? current.notes), lastUpdated: "20 Sep 2025" }));
+    updateProject((current) => ({ ...current, name: String(data.get("name") || current.name), owner: String(data.get("owner") || current.owner), status: String(data.get("status")) as ProjectStatus, notes: String(data.get("notes") ?? current.notes), lastUpdated: todayLabel() }));
     closeModal();
   };
   const updateStageStatus = (stageId: string, stageName: string, isCustom: boolean, status: StageStatus) => {
@@ -51,7 +52,7 @@ export default function ProjectDetails() {
       const stages = index === -1
         ? [...current.stages, { id: stageId, name: stageName, status, isCustom }]
         : current.stages.map((stage, itemIndex) => itemIndex === index ? { ...stage, status } : stage);
-      return { ...current, stages, lastUpdated: "20 Sep 2025" };
+      return { ...current, stages, lastUpdated: todayLabel() };
     });
   };
 
@@ -63,8 +64,8 @@ export default function ProjectDetails() {
       setStageError("A stage with this name already exists.");
       return;
     }
-    const stage = { id: `custom-stage-${Date.now()}`, name, status: String(data.get("status")) as StageStatus, isCustom: true };
-    updateProject((current) => ({ ...current, stages: [...current.stages, stage], lastUpdated: "20 Sep 2025" }));
+    const stage = { id: crypto.randomUUID(), name, status: String(data.get("status")) as StageStatus, isCustom: true };
+    updateProject((current) => ({ ...current, stages: [...current.stages, stage], lastUpdated: todayLabel() }));
     closeModal();
   };
 
@@ -73,16 +74,16 @@ export default function ProjectDetails() {
     const data = new FormData(event.currentTarget);
     const value = (key: string) => String(data.get(key) ?? "").trim();
     if (modal === "blocker") {
-      const record: Blocker = { id: editingBlocker?.id ?? `blocker-${Date.now()}`, description: value("description"), impact: Number(data.get("impact") || 0), currentStatus: value("currentStatus"), notes: value("notes") };
-      updateProject((current) => ({ ...current, blockers: editingBlocker ? current.blockers.map((item) => item.id === editingBlocker.id ? record : item) : [...current.blockers, record], lastUpdated: "20 Sep 2025" }));
+      const record: Blocker = { id: editingBlocker?.id ?? crypto.randomUUID(), description: value("description"), impact: Number(data.get("impact") || 0), currentStatus: value("currentStatus"), notes: value("notes") };
+      updateProject((current) => ({ ...current, blockers: editingBlocker ? current.blockers.map((item) => item.id === editingBlocker.id ? record : item) : [...current.blockers, record], lastUpdated: todayLabel() }));
     }
     if (modal === "execution") {
-      const record: ExecutionItem = { id: editingExecution?.id ?? `execution-${Date.now()}`, area: value("area"), completion: value("completion") === "" ? null : Math.min(100, Math.max(0, Number(value("completion")))) / 100, bugs: value("bugs").split(",").map((bug) => bug.trim()).filter(Boolean), notes: value("notes"), owner: value("owner"), poc: value("poc") };
-      updateProject((current) => ({ ...current, execution: editingExecution ? current.execution.map((item) => item.id === editingExecution.id ? record : item) : [...current.execution, record], lastUpdated: "20 Sep 2025" }));
+      const record: ExecutionItem = { id: editingExecution?.id ?? crypto.randomUUID(), area: value("area"), completion: value("completion") === "" ? null : Math.min(100, Math.max(0, Number(value("completion")))) / 100, bugs: value("bugs").split(",").map((bug) => bug.trim()).filter(Boolean), notes: value("notes"), owner: value("owner"), poc: value("poc") };
+      updateProject((current) => ({ ...current, execution: editingExecution ? current.execution.map((item) => item.id === editingExecution.id ? record : item) : [...current.execution, record], lastUpdated: todayLabel() }));
     }
     if (modal === "risk") {
-      const record: Risk = { id: editingRisk?.id ?? `risk-${Date.now()}`, description: value("description"), notes: value("notes"), status: value("status") as RecordStatus, owner: value("owner") };
-      updateProject((current) => ({ ...current, risks: editingRisk ? current.risks.map((item) => item.id === editingRisk.id ? record : item) : [...current.risks, record], lastUpdated: "20 Sep 2025" }));
+      const record: Risk = { id: editingRisk?.id ?? crypto.randomUUID(), description: value("description"), notes: value("notes"), status: value("status") as RecordStatus, owner: value("owner") };
+      updateProject((current) => ({ ...current, risks: editingRisk ? current.risks.map((item) => item.id === editingRisk.id ? record : item) : [...current.risks, record], lastUpdated: todayLabel() }));
     }
     closeModal();
   };

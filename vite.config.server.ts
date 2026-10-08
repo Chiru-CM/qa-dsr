@@ -29,6 +29,7 @@ export default defineConfig({
         "buffer",
         "querystring",
         "child_process",
+        "node:sqlite",
         // External dependencies that should not be bundled
         "express",
         "cors",

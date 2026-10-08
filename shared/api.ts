@@ -1,12 +1,12 @@
-/**
- * Shared code between client and server
- * Useful to share types between client and server
- * and/or small pure JS functions that can be used on both client and server
- */
+import type { DailySnapshot, Project, Sprint, Workspace } from "../client/lib/dsr-data";
 
-/**
- * Example response type for /api/demo
- */
+export interface WorkspaceData {
+  workspace: Workspace;
+  projects: Project[];
+  sprints: Sprint[];
+  dailySnapshots: Record<string, DailySnapshot>;
+}
+
 export interface DemoResponse {
   message: string;
 }

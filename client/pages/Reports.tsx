@@ -49,6 +49,8 @@ const statusShadows: Record<string, string> = {
 };
 
 const safeFileName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+const reportStageNames = ["Functionality Execution", "Non Functionality Execution", "Automation- Print", "Automation- Scan"];
+const normalizeStageName = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
 
 function ProjectReportCard({ project, index }: { project: Project; index: number }) {
   const status = executionStatus(project);
@@ -69,8 +71,11 @@ function ProjectReportCard({ project, index }: { project: Project; index: number
 
       <div className="space-y-4 p-5 md:p-6">
         <section className="mb-4 rounded-xl border border-slate-200/80 bg-white p-4">
-          <SectionHeading title="High level status report" description="Project-specific stages from the DSR workbook." />
-          <div className="sprint-report-stage-grid grid gap-2 sm:grid-cols-2 md:grid-cols-4">{project.stages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5"><div className="mb-1.5 flex items-start justify-between gap-1.5"><p className="text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#37b9a5]" /></div><div className="mt-1"><StatusBadge status={stage.status} compact /></div></div>)}</div>
+          <SectionHeading title="High level status report" description="Status across the four DSR execution categories." />
+          <div className="sprint-report-stage-grid grid gap-2 sm:grid-cols-2 md:grid-cols-4">{reportStageNames.map((name) => {
+            const stage = project.stages.find((item) => normalizeStageName(item.name) === normalizeStageName(name));
+            return <div key={name} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5"><div className="mb-1.5 flex items-start justify-between gap-1.5"><p className="text-[11px] font-bold leading-4 text-slate-700">{name}</p><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#37b9a5]" /></div><div className="mt-1"><StatusBadge status={stage?.status ?? "N/A"} compact /></div></div>;
+          })}</div>
         </section>
 
         {project.blockers.length > 0 && <section className="rounded-xl border border-slate-200/80 p-4">
