@@ -54,10 +54,6 @@ const normalizeStageName = (value: string) => value.toLowerCase().replace(/[^a-z
 const asPercent = (part: number | null | undefined, whole: number | null | undefined) => whole && whole > 0 && part !== null && part !== undefined ? `${Math.round((part / whole) * 10000) / 100}%` : "—";
 const completionPercent = (executed: number | null | undefined, total: number | null | undefined, completion: number | null) => total && total > 0 && executed !== null && executed !== undefined ? asPercent(executed, total) : completion === null ? "—" : `${Math.round(completion * 100)}%`;
 
-function ReportField({ label, children }: { label: string; children: ReactNode }) {
-  return <div className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5"><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{label}</p><div className="mt-1 whitespace-pre-wrap break-words text-[10px] leading-4 text-slate-600 [overflow-wrap:anywhere]">{children === null || children === undefined || children === "" ? "—" : children}</div></div>;
-}
-
 function ReportDataTable({ rows }: { rows: [string, ReactNode][] }) {
   return <div className="min-w-0 overflow-hidden rounded-lg border border-slate-100"><table className="w-full table-fixed border-collapse text-left text-[10px]"><tbody className="divide-y divide-slate-100">{rows.map(([label, value]) => <tr key={label}><th scope="row" className="w-[42%] break-words bg-slate-50 px-2 py-1.5 font-semibold text-slate-500 [overflow-wrap:anywhere]">{label}</th><td className="break-words whitespace-pre-wrap px-2 py-1.5 text-slate-700 [overflow-wrap:anywhere]">{value === null || value === undefined || value === "" ? "—" : value}</td></tr>)}</tbody></table></div>;
 }
@@ -100,7 +96,7 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: {
 
         <section className="rounded-xl border border-slate-200/80 p-4">
           <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Test preparation summary</h4><p className="mt-0.5 text-[11px] text-slate-400">Readiness, estimates, blockers, owners, and comments.</p></div>
-          {report.preparation.length ? <div className="space-y-2">{report.preparation.map((item) => <article key={item.id} className="sprint-report-field-card rounded-lg border border-slate-100 p-3"><h5 className="mb-2 text-xs font-bold text-slate-700">{item.name}</h5><div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3"><ReportField label="Status"><StatusBadge status={item.status} compact /></ReportField><ReportField label="ETA for completion">{item.eta}</ReportField><ReportField label="Blocked reason">{item.blockedReason}</ReportField><ReportField label="ETA to unblock">{item.etaToUnblock}</ReportField><ReportField label="Owner">{item.owner}</ReportField><ReportField label="Comments">{item.comments}</ReportField></div></article>)}</div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No preparation items recorded.</p>}
+          {report.preparation.length ? <div className="space-y-2">{report.preparation.map((item) => <article key={item.id} className="sprint-report-field-card rounded-lg border border-slate-100 p-3"><h5 className="mb-2 text-xs font-bold text-slate-700">{item.name}</h5><div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-2"><ReportDataTable rows={[["Status", <StatusBadge status={item.status} compact />], ["ETA for completion", item.eta], ["Blocked reason", item.blockedReason]]} /><ReportDataTable rows={[["ETA to unblock", item.etaToUnblock], ["Owner", item.owner], ["Comments", item.comments]]} /></div></article>)}</div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No preparation items recorded.</p>}
         </section>
 
         <section className="rounded-xl border border-slate-200/80 p-4">
