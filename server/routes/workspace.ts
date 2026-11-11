@@ -9,6 +9,9 @@ const sprintStatusSchema = z.enum(["Not Started", "In Progress", "Completed", "B
 const projectStatusSchema = z.enum(["Completed", "In Progress", "Yet to Start", "Blocked", "Failed", "Deferred"]);
 const stageStatusSchema = z.enum(["Completed", "In Progress", "Yet to Start", "Blocked", "Failed", "Deferred", "Complete", "Not Yet Started", "N/A"]);
 const recordStatusSchema = z.enum(["Open", "Blocked", "Monitoring", "Resolved", "Deferred"]);
+const defectStatusSchema = z.enum(["Open", "In Progress", "Development", "Fixed / In Verification", "Closed"]);
+const defectSeveritySchema = z.enum(["P1", "P2", "P3"]);
+const reportTextSchema = z.string().max(2000);
 
 const projectSchema = z.object({
   id: idSchema,
@@ -18,9 +21,55 @@ const projectSchema = z.object({
   lastUpdated: z.string().max(80),
   stages: z.array(z.object({ id: idSchema, name: z.string().trim().min(1).max(200), status: stageStatusSchema, isCustom: z.boolean().optional() })),
   blockers: z.array(z.object({ id: idSchema, description: z.string().max(2000), impact: z.number().min(0).max(100), currentStatus: z.string().max(100), notes: z.string().max(10000) })),
-  execution: z.array(z.object({ id: idSchema, area: z.string().trim().min(1).max(200), completion: z.number().min(0).max(1).nullable(), bugs: z.array(z.string().max(200)), notes: z.string().max(10000), owner: z.string().max(200), poc: z.string().max(200) })),
+  execution: z.array(z.object({
+    id: idSchema,
+    area: z.string().trim().min(1).max(200),
+    completion: z.number().min(0).max(1).nullable(),
+    bugs: z.array(z.string().max(200)),
+    notes: z.string().max(10000),
+    owner: z.string().max(200),
+    poc: z.string().max(200),
+    totalTestCases: z.number().min(0).nullable().optional(),
+    testCasesExecuted: z.number().min(0).nullable().optional(),
+    testCasesPassed: z.number().min(0).nullable().optional(),
+    blocked: z.number().min(0).nullable().optional(),
+    blockedReason: z.string().max(2000).optional(),
+    etaToUnblock: z.string().max(100).optional(),
+    progressUpdateToUnblock: z.string().max(10000).optional(),
+    toDo: z.number().min(0).nullable().optional(),
+    failed: z.number().min(0).nullable().optional(),
+    exploratoryTests: z.string().max(10000).optional(),
+  })),
   risks: z.array(z.object({ id: idSchema, description: z.string().max(2000), notes: z.string().max(10000), status: recordStatusSchema, owner: z.string().max(200) })),
   notes: z.string().max(20000),
+  report: z.object({
+    sprintStartDate: z.string().max(40),
+    sprintEndDate: z.string().max(40),
+    testEnvironment: reportTextSchema,
+    firmwareVersion: z.string().max(200),
+    solutionVersion: z.string().max(200),
+    targetedDevices: reportTextSchema,
+  }).optional(),
+  preparation: z.array(z.object({
+    id: idSchema,
+    name: z.string().trim().min(1).max(200),
+    status: stageStatusSchema,
+    eta: z.string().max(100),
+    blockedReason: z.string().max(2000),
+  })).optional(),
+  defects: z.array(z.object({
+    id: idSchema,
+    title: z.string().max(2000),
+    impactedTestCases: z.string().max(2000),
+    status: defectStatusSchema,
+    severity: defectSeveritySchema,
+    comments: z.string().max(10000),
+    owner: z.string().max(200),
+    poc: z.string().max(200),
+    link: z.string().max(2000),
+  })).optional(),
+  validatedDefects: z.array(z.string().max(200)).optional(),
+  additionalNotes: z.string().max(20000).optional(),
   functionalityStatus: stageStatusSchema,
   nonFunctionalityStatus: stageStatusSchema,
   automationStatus: stageStatusSchema,
