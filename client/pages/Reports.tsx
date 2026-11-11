@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CalendarDays, Check, CircleAlert, Clock3, Download, FileImage, FileText, Printer, ShieldAlert, Users } from "lucide-react";
 import { toPng } from "html-to-image";
 import { useOutletContext } from "react-router-dom";
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
 import { PageTitle, SectionHeading, StatusBadge } from "@/components/dsr/DsrPrimitives";
 import { normalizeProject, projectCompletion, type Project, type Sprint } from "@/lib/dsr-data";
@@ -67,6 +68,19 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: {
     status: defectStatus,
     counts: defectSeverities.map((severity) => report.defects.filter((defect) => (defect.status === defectStatus || (defectStatus === "In Progress" && defect.status === "Development")) && defect.severity === severity).length),
   }));
+  const chartExecution = report.execution.map((item) => {
+    const total = item.totalTestCases ?? 0;
+    return {
+      category: item.area,
+      "Pass %": total ? Math.round(((item.testCasesPassed ?? 0) / total) * 10000) / 100 : 0,
+      "Block %": total ? Math.round(((item.blocked ?? 0) / total) * 10000) / 100 : 0,
+      "To Do %": total ? Math.round(((item.toDo ?? 0) / total) * 10000) / 100 : 0,
+      "Fail %": total ? Math.round(((item.failed ?? 0) / total) * 10000) / 100 : 0,
+    };
+  });
+  const hasExecutionMetrics = report.execution.some((item) => [item.totalTestCases, item.testCasesPassed, item.blocked, item.toDo, item.failed].some((value) => value !== null));
+  const chartDefectSummary = defectSummary.map(({ status: name, counts }) => ({ status: name, P1: counts[0], P2: counts[1], P3: counts[2] }));
+  const hasDefects = report.defects.length > 0;
   const reportStages = [...reportStageNames, ...project.stages.filter((stage) => stage.isCustom).map((stage) => stage.name)];
 
   return (
@@ -123,6 +137,11 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: {
             <ReportDataTable rows={[["Owner", entry.owner], ["POC / SL", entry.poc], ["To do", entry.toDo ?? "—"], ["To do %", asPercent(entry.toDo, entry.totalTestCases)], ["Test cases failed", entry.failed ?? "—"], ["Fail %", asPercent(entry.failed, entry.totalTestCases)], ["Exploratory tests added", entry.exploratoryTests], ["Bugs submitted", entry.bugs.join(", ")], ["Additional comments", entry.notes]]} />
           </div></article>)}</div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No execution items recorded.</p>}
         </section>
+
+        {(hasExecutionMetrics || hasDefects) && <div className="grid gap-4 md:grid-cols-2">
+          {hasExecutionMetrics && <section className="min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Test execution outcomes" description="Pass, blocked, to-do, and failed percentages by execution area." /><div className="mt-3 h-[260px] w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartExecution} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="category" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis domain={[0, 100]} tick={{ fontSize: 9 }} unit="%" /><Tooltip formatter={(value) => `${value}%`} /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar dataKey="Pass %" fill="#5e9bd6" radius={[3, 3, 0, 0]} /><Bar dataKey="Block %" fill="#f3a477" radius={[3, 3, 0, 0]} /><Bar dataKey="To Do %" fill="#aab0ba" radius={[3, 3, 0, 0]} /><Bar dataKey="Fail %" fill="#f07167" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
+          {hasDefects && <section className="min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Defects by status and severity" description="Defect counts across workflow status and severity." /><div className="mt-3 h-[260px] w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartDefectSummary} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="status" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis allowDecimals={false} tick={{ fontSize: 9 }} /><Tooltip /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar dataKey="P1" fill="#ef806f" radius={[3, 3, 0, 0]} /><Bar dataKey="P2" fill="#f3c969" radius={[3, 3, 0, 0]} /><Bar dataKey="P3" fill="#5e9bd6" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
+        </div>}
 
         {project.risks.length > 0 && <section className="rounded-xl border border-slate-200/80 p-4">
           <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Current project risks</h4><p className="mt-0.5 text-[11px] text-slate-400">Risks to monitor through the next reporting cycle.</p></div>
