@@ -4,7 +4,7 @@ import { toPng } from "html-to-image";
 import { useOutletContext } from "react-router-dom";
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
 import { PageTitle, ProgressBar, SectionHeading, StatusBadge } from "@/components/dsr/DsrPrimitives";
-import { projectCompletion, type Project, type Sprint } from "@/lib/dsr-data";
+import { normalizeProject, projectCompletion, type Project, type Sprint } from "@/lib/dsr-data";
 
 const localDate = () => {
   const now = new Date();
@@ -49,12 +49,19 @@ const statusShadows: Record<string, string> = {
 };
 
 const safeFileName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-const reportStageNames = ["Functionality Execution", "Non Functionality Execution", "Automation- Print", "Automation- Scan"];
+const reportStageNames = ["Exploratory", "TC Design", "Functionality Execution", "Non Functionality Execution", "Automation- Print", "Automation- Scan"];
 const normalizeStageName = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
 
-function ProjectReportCard({ project, index }: { project: Project; index: number }) {
+function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: { project: Project; index: number; sprintStartDate: string; sprintEndDate: string }) {
+  const report = normalizeProject(project);
   const status = executionStatus(project);
   const completion = projectCompletion(project);
+  const defectSeverities = ["P1", "P2", "P3"] as const;
+  const defectSummary = ["Open", "In Progress", "Fixed / In Verification", "Closed"].map((defectStatus) => ({
+    status: defectStatus,
+    counts: defectSeverities.map((severity) => report.defects.filter((defect) => (defect.status === defectStatus || (defectStatus === "In Progress" && defect.status === "Development")) && defect.severity === severity).length),
+  }));
+  const reportStages = [...reportStageNames, ...project.stages.filter((stage) => stage.isCustom).map((stage) => stage.name)];
 
   return (
     <article className={`sprint-report-card overflow-hidden rounded-2xl border border-slate-200/80 bg-white ${statusShadows[status]}`}>
@@ -71,11 +78,26 @@ function ProjectReportCard({ project, index }: { project: Project; index: number
 
       <div className="space-y-4 p-5 md:p-6">
         <section className="mb-4 rounded-xl border border-slate-200/80 bg-white p-4">
-          <SectionHeading title="High level status report" description="Status across the four DSR execution categories." />
-          <div className="sprint-report-stage-grid grid gap-2 sm:grid-cols-2 md:grid-cols-4">{reportStageNames.map((name) => {
+          <SectionHeading title="High level status report" description="Sprint dates, test environment, and status across project stages." />
+          <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {[{ label: "Sprint dates", value: sprintStartDate && sprintEndDate ? `${sprintStartDate} – ${sprintEndDate}` : "Not set" }, { label: "Test environment", value: report.report.testEnvironment || "Not set" }, { label: "Firmware version", value: report.report.firmwareVersion || "Not set" }, { label: "Solution version", value: report.report.solutionVersion || "Not set" }, { label: "Targeted devices", value: report.report.targetedDevices || "Not set" }].map((item) => <div key={item.label} className="rounded-lg border border-slate-100 bg-slate-50/60 p-2.5"><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{item.label}</p><p className="mt-1 whitespace-pre-wrap text-[11px] font-semibold leading-4 text-slate-700">{item.value}</p></div>)}
+          </div>
+          <div className="sprint-report-stage-grid grid gap-2 sm:grid-cols-2 md:grid-cols-4">{reportStages.map((name) => {
             const stage = project.stages.find((item) => normalizeStageName(item.name) === normalizeStageName(name));
             return <div key={name} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5"><div className="mb-1.5 flex items-start justify-between gap-1.5"><p className="text-[11px] font-bold leading-4 text-slate-700">{name}</p><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#37b9a5]" /></div><div className="mt-1"><StatusBadge status={stage?.status ?? "N/A"} compact /></div></div>;
           })}</div>
+        </section>
+
+        <section className="rounded-xl border border-slate-200/80 p-4">
+          <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Test preparation summary</h4><p className="mt-0.5 text-[11px] text-slate-400">Readiness, estimates, blockers, owners, and comments.</p></div>
+          {report.preparation.length ? <div className="overflow-x-auto rounded-lg border border-slate-100"><table className="w-full min-w-[1050px] text-left"><thead><tr className="border-b border-slate-100 bg-slate-50 text-[9px] font-bold uppercase tracking-wider text-slate-400">{["Preparation item", "Status", "ETA for completion", "Blocked reason", "ETA to unblock", "Owner", "Comments"].map((label) => <th key={label} className="px-3 py-2">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{report.preparation.map((item) => <tr key={item.id} className="align-top text-[10px] text-slate-600"><td className="px-3 py-2 font-semibold text-slate-700">{item.name}</td><td className="px-3 py-2"><StatusBadge status={item.status} compact /></td><td className="px-3 py-2">{item.eta || "—"}</td><td className="whitespace-pre-wrap px-3 py-2">{item.blockedReason || "—"}</td><td className="px-3 py-2">{item.etaToUnblock || "—"}</td><td className="px-3 py-2">{item.owner || "—"}</td><td className="whitespace-pre-wrap px-3 py-2">{item.comments || "—"}</td></tr>)}</tbody></table></div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No preparation items recorded.</p>}
+        </section>
+
+        <section className="rounded-xl border border-slate-200/80 p-4">
+          <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Defect summary</h4><p className="mt-0.5 text-[11px] text-slate-400">Defect counts by workflow status and severity, followed by defect details.</p></div>
+          <div className="overflow-x-auto rounded-lg border border-slate-100"><table className="w-full min-w-[430px] text-left"><thead><tr className="border-b border-slate-100 bg-slate-50 text-[9px] font-bold uppercase tracking-wider text-slate-400"><th className="px-3 py-2">Status</th>{defectSeverities.map((severity) => <th key={severity} className="px-3 py-2">{severity}</th>)}<th className="px-3 py-2">Total</th></tr></thead><tbody className="divide-y divide-slate-100">{defectSummary.map((row) => <tr key={row.status} className="text-[10px] text-slate-600"><td className="px-3 py-2 font-semibold text-slate-700">{row.status}</td>{row.counts.map((count, index) => <td key={defectSeverities[index]} className="px-3 py-2">{count}</td>)}<td className="px-3 py-2 font-bold">{row.counts.reduce((sum, count) => sum + count, 0)}</td></tr>)}<tr className="border-t border-slate-200 text-[10px] font-bold text-slate-700"><td className="px-3 py-2">Total defects</td>{defectSeverities.map((severity) => <td key={severity} className="px-3 py-2">{report.defects.filter((defect) => defect.severity === severity).length}</td>)}<td className="px-3 py-2">{report.defects.length}</td></tr></tbody></table></div>
+          {report.defects.length ? <div className="mt-3 overflow-x-auto rounded-lg border border-slate-100"><table className="w-full min-w-[1100px] text-left"><thead><tr className="border-b border-slate-100 bg-slate-50 text-[9px] font-bold uppercase tracking-wider text-slate-400">{["Defect ID", "Defect title", "Test cases impacted", "Status", "Severity", "Owner", "POC / SL", "Comments", "Link"].map((label) => <th key={label} className="px-3 py-2">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{report.defects.map((defect) => <tr key={defect.id} className="align-top text-[10px] text-slate-600"><td className="px-3 py-2 font-semibold text-slate-700">{defect.id}</td><td className="whitespace-pre-wrap px-3 py-2">{defect.title || "—"}</td><td className="whitespace-pre-wrap px-3 py-2">{defect.impactedTestCases || "—"}</td><td className="px-3 py-2">{defect.status}</td><td className="px-3 py-2 font-bold">{defect.severity}</td><td className="px-3 py-2">{defect.owner || "—"}</td><td className="px-3 py-2">{defect.poc || "—"}</td><td className="whitespace-pre-wrap px-3 py-2">{defect.comments || "—"}</td><td className="break-all px-3 py-2">{defect.link || "—"}</td></tr>)}</tbody></table></div> : <p className="mt-3 rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No defects recorded.</p>}
+          {report.validatedDefects.length > 0 && <p className="mt-3 text-[10px] text-slate-500"><strong className="text-slate-700">Validated defects:</strong> {report.validatedDefects.join(", ")}</p>}
         </section>
 
         {project.blockers.length > 0 && <section className="rounded-xl border border-slate-200/80 p-4">
@@ -211,7 +233,7 @@ export default function Reports() {
       {missingHistory && <div className="rounded-xl border border-[#f2dfaa] bg-[#fffaf0] px-4 py-3 text-xs leading-5 text-[#8a6829]"><strong>Historical snapshot unavailable.</strong> This date predates saved daily history, so this report shows the current project details rather than a verified past-day state.</div>}
 
       <div className="flex items-end justify-between gap-3 px-1"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#31a896]">Portfolio detail</p><h2 className="mt-1 text-lg font-bold text-slate-900">Project-by-project pulse</h2></div><p className="text-[10px] font-semibold text-slate-400">{reportProjects.length} {reportProjects.length === 1 ? "PROJECT" : "PROJECTS"}</p></div>
-      <div className="sprint-report-project-list space-y-4">{reportProjects.map((project, index) => <ProjectReportCard key={project.id} project={project} index={index} />)}</div>
+      <div className="sprint-report-project-list space-y-4">{reportProjects.map((project, index) => <ProjectReportCard key={project.id} project={project} index={index} sprintStartDate={snapshot?.sprintStartDate ?? selectedSprint?.startDate ?? ""} sprintEndDate={snapshot?.sprintEndDate ?? selectedSprint?.endDate ?? ""} />)}</div>
       <footer className="flex flex-col justify-between gap-1 border-t border-slate-200 px-1 pt-3 text-[10px] font-medium text-slate-400 sm:flex-row"><span>QALens · QA Engineering</span><span>{snapshot ? `Snapshot captured ${formatDate(snapshot.date)}` : "Generated from current project data"}</span></footer>
     </div>}
   </div>;

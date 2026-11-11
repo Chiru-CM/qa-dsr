@@ -56,6 +56,9 @@ const projectSchema = z.object({
     status: stageStatusSchema,
     eta: z.string().max(100),
     blockedReason: z.string().max(2000),
+    etaToUnblock: z.string().max(100).optional(),
+    owner: z.string().max(200).optional(),
+    comments: z.string().max(10000).optional(),
   })).optional(),
   defects: z.array(z.object({
     id: idSchema,
