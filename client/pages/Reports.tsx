@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CalendarDays, Check, CircleAlert, Clock3, Download, FileImage, FileText, Printer, ShieldAlert, Users } from "lucide-react";
 import { toPng } from "html-to-image";
 import { useOutletContext } from "react-router-dom";
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
-import { PageTitle, ProgressBar, SectionHeading, StatusBadge } from "@/components/dsr/DsrPrimitives";
+import { PageTitle, SectionHeading, StatusBadge } from "@/components/dsr/DsrPrimitives";
 import { normalizeProject, projectCompletion, type Project, type Sprint } from "@/lib/dsr-data";
 
 const localDate = () => {
@@ -51,6 +51,12 @@ const statusShadows: Record<string, string> = {
 const safeFileName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 const reportStageNames = ["Exploratory", "TC Design", "Functionality Execution", "Non Functionality Execution", "Automation- Print", "Automation- Scan"];
 const normalizeStageName = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
+const asPercent = (part: number | null | undefined, whole: number | null | undefined) => whole && whole > 0 && part !== null && part !== undefined ? `${Math.round((part / whole) * 10000) / 100}%` : "—";
+const completionPercent = (executed: number | null | undefined, total: number | null | undefined, completion: number | null) => total && total > 0 && executed !== null && executed !== undefined ? asPercent(executed, total) : completion === null ? "—" : `${Math.round(completion * 100)}%`;
+
+function ReportField({ label, children }: { label: string; children: ReactNode }) {
+  return <div className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5"><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{label}</p><div className="mt-1 whitespace-pre-wrap break-words text-[10px] leading-4 text-slate-600 [overflow-wrap:anywhere]">{children === null || children === undefined || children === "" ? "—" : children}</div></div>;
+}
 
 function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: { project: Project; index: number; sprintStartDate: string; sprintEndDate: string }) {
   const report = normalizeProject(project);
@@ -90,13 +96,13 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: {
 
         <section className="rounded-xl border border-slate-200/80 p-4">
           <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Test preparation summary</h4><p className="mt-0.5 text-[11px] text-slate-400">Readiness, estimates, blockers, owners, and comments.</p></div>
-          {report.preparation.length ? <div className="overflow-x-auto rounded-lg border border-slate-100"><table className="w-full min-w-[1050px] text-left"><thead><tr className="border-b border-slate-100 bg-slate-50 text-[9px] font-bold uppercase tracking-wider text-slate-400">{["Preparation item", "Status", "ETA for completion", "Blocked reason", "ETA to unblock", "Owner", "Comments"].map((label) => <th key={label} className="px-3 py-2">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{report.preparation.map((item) => <tr key={item.id} className="align-top text-[10px] text-slate-600"><td className="px-3 py-2 font-semibold text-slate-700">{item.name}</td><td className="px-3 py-2"><StatusBadge status={item.status} compact /></td><td className="px-3 py-2">{item.eta || "—"}</td><td className="whitespace-pre-wrap px-3 py-2">{item.blockedReason || "—"}</td><td className="px-3 py-2">{item.etaToUnblock || "—"}</td><td className="px-3 py-2">{item.owner || "—"}</td><td className="whitespace-pre-wrap px-3 py-2">{item.comments || "—"}</td></tr>)}</tbody></table></div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No preparation items recorded.</p>}
+          {report.preparation.length ? <div className="space-y-2">{report.preparation.map((item) => <article key={item.id} className="sprint-report-field-card rounded-lg border border-slate-100 p-3"><h5 className="mb-2 text-xs font-bold text-slate-700">{item.name}</h5><div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3"><ReportField label="Status"><StatusBadge status={item.status} compact /></ReportField><ReportField label="ETA for completion">{item.eta}</ReportField><ReportField label="Blocked reason">{item.blockedReason}</ReportField><ReportField label="ETA to unblock">{item.etaToUnblock}</ReportField><ReportField label="Owner">{item.owner}</ReportField><ReportField label="Comments">{item.comments}</ReportField></div></article>)}</div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No preparation items recorded.</p>}
         </section>
 
         <section className="rounded-xl border border-slate-200/80 p-4">
           <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Defect summary</h4><p className="mt-0.5 text-[11px] text-slate-400">Defect counts by workflow status and severity, followed by defect details.</p></div>
-          <div className="overflow-x-auto rounded-lg border border-slate-100"><table className="w-full min-w-[430px] text-left"><thead><tr className="border-b border-slate-100 bg-slate-50 text-[9px] font-bold uppercase tracking-wider text-slate-400"><th className="px-3 py-2">Status</th>{defectSeverities.map((severity) => <th key={severity} className="px-3 py-2">{severity}</th>)}<th className="px-3 py-2">Total</th></tr></thead><tbody className="divide-y divide-slate-100">{defectSummary.map((row) => <tr key={row.status} className="text-[10px] text-slate-600"><td className="px-3 py-2 font-semibold text-slate-700">{row.status}</td>{row.counts.map((count, index) => <td key={defectSeverities[index]} className="px-3 py-2">{count}</td>)}<td className="px-3 py-2 font-bold">{row.counts.reduce((sum, count) => sum + count, 0)}</td></tr>)}<tr className="border-t border-slate-200 text-[10px] font-bold text-slate-700"><td className="px-3 py-2">Total defects</td>{defectSeverities.map((severity) => <td key={severity} className="px-3 py-2">{report.defects.filter((defect) => defect.severity === severity).length}</td>)}<td className="px-3 py-2">{report.defects.length}</td></tr></tbody></table></div>
-          {report.defects.length ? <div className="mt-3 overflow-x-auto rounded-lg border border-slate-100"><table className="w-full min-w-[1100px] text-left"><thead><tr className="border-b border-slate-100 bg-slate-50 text-[9px] font-bold uppercase tracking-wider text-slate-400">{["Defect ID", "Defect title", "Test cases impacted", "Status", "Severity", "Owner", "POC / SL", "Comments", "Link"].map((label) => <th key={label} className="px-3 py-2">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{report.defects.map((defect) => <tr key={defect.id} className="align-top text-[10px] text-slate-600"><td className="px-3 py-2 font-semibold text-slate-700">{defect.id}</td><td className="whitespace-pre-wrap px-3 py-2">{defect.title || "—"}</td><td className="whitespace-pre-wrap px-3 py-2">{defect.impactedTestCases || "—"}</td><td className="px-3 py-2">{defect.status}</td><td className="px-3 py-2 font-bold">{defect.severity}</td><td className="px-3 py-2">{defect.owner || "—"}</td><td className="px-3 py-2">{defect.poc || "—"}</td><td className="whitespace-pre-wrap px-3 py-2">{defect.comments || "—"}</td><td className="break-all px-3 py-2">{defect.link || "—"}</td></tr>)}</tbody></table></div> : <p className="mt-3 rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No defects recorded.</p>}
+          <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">{defectSummary.map((row) => <div key={row.status} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5"><p className="mb-2 text-[10px] font-bold text-slate-700">{row.status}</p><div className="grid grid-cols-4 gap-1">{defectSeverities.map((severity, index) => <div key={severity} className="min-w-0 rounded bg-white p-1.5 text-center"><p className="text-[8px] font-bold uppercase text-slate-400">{severity}</p><p className="mt-0.5 text-[10px] font-semibold text-slate-700">{row.counts[index]}</p></div>)}<div className="min-w-0 rounded bg-white p-1.5 text-center"><p className="text-[8px] font-bold uppercase text-slate-400">Total</p><p className="mt-0.5 text-[10px] font-semibold text-slate-700">{row.counts.reduce((sum, count) => sum + count, 0)}</p></div></div></div>)}<div className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5 sm:col-span-2"><p className="mb-2 text-[10px] font-bold text-slate-700">Total defects</p><div className="grid grid-cols-4 gap-1">{defectSeverities.map((severity) => <div key={severity} className="min-w-0 rounded bg-white p-1.5 text-center"><p className="text-[8px] font-bold uppercase text-slate-400">{severity}</p><p className="mt-0.5 text-[10px] font-semibold text-slate-700">{report.defects.filter((defect) => defect.severity === severity).length}</p></div>)}<div className="min-w-0 rounded bg-white p-1.5 text-center"><p className="text-[8px] font-bold uppercase text-slate-400">Total</p><p className="mt-0.5 text-[10px] font-semibold text-slate-700">{report.defects.length}</p></div></div></div></div>
+          {report.defects.length ? <div className="mt-3 space-y-2">{report.defects.map((defect) => <article key={defect.id} className="min-w-0 rounded-lg border border-slate-100 p-3"><div className="mb-2 flex flex-wrap items-center gap-2"><h5 className="text-xs font-bold text-slate-700">{defect.id}</h5><span className="rounded-md bg-slate-100 px-2 py-1 text-[9px] font-semibold text-slate-600">{defect.status}</span><span className="rounded-md bg-[#fff4df] px-2 py-1 text-[9px] font-bold text-[#ae7d22]">{defect.severity}</span></div><div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3"><ReportField label="Defect title">{defect.title}</ReportField><ReportField label="Test cases impacted">{defect.impactedTestCases}</ReportField><ReportField label="Owner">{defect.owner}</ReportField><ReportField label="POC / SL">{defect.poc}</ReportField><ReportField label="Comments">{defect.comments}</ReportField><ReportField label="Link">{defect.link}</ReportField></div></article>)}</div> : <p className="mt-3 rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No defects recorded.</p>}
           {report.validatedDefects.length > 0 && <p className="mt-3 text-[10px] text-slate-500"><strong className="text-slate-700">Validated defects:</strong> {report.validatedDefects.join(", ")}</p>}
         </section>
 
@@ -111,18 +117,27 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: {
         </section>}
 
         <section className="rounded-xl border border-slate-200/80 p-4">
-          <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Current execution status</h4><p className="mt-0.5 text-[11px] text-slate-400">Completion, defects, ownership, and handoffs for each execution area.</p></div>
-          {project.execution.length ? <div className="overflow-hidden rounded-lg border border-slate-100">
-            <div className="sprint-report-execution-header hidden grid-cols-[1.15fr_1.1fr_1fr_1.7fr_0.85fr_0.95fr] gap-3 border-b border-slate-100 bg-slate-50 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-slate-400 md:grid"><span>Execution area</span><span>Completion</span><span>Bugs submitted</span><span>Additional notes</span><span>Owner</span><span>POC / SL</span></div>
-            {project.execution.map((entry) => <div key={entry.id} className="sprint-report-execution-row grid gap-3 border-b border-slate-100 p-3 last:border-b-0 md:grid-cols-[1.15fr_1.1fr_1fr_1.7fr_0.85fr_0.95fr] md:items-start">
-              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Execution area</p><p className="mt-1 text-xs font-bold text-slate-700">{entry.area}</p></div>
-              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Completion</p><div className="mt-1"><ProgressBar value={entry.completion} /></div></div>
-              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Bugs submitted</p><div className="mt-1 flex flex-wrap gap-1">{entry.bugs.length ? entry.bugs.map((bug) => <span key={bug} className="rounded-md bg-[#fff4df] px-1.5 py-1 text-[9px] font-bold text-[#ae7d22]">{bug}</span>) : <span className="text-xs text-slate-400">—</span>}</div></div>
-              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Additional notes</p><p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-500">{entry.notes || "—"}</p></div>
-              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Owner</p><p className="mt-1 text-xs text-slate-600">{entry.owner || "—"}</p></div>
-              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">POC / SL</p><p className="mt-1 text-xs text-slate-600">{entry.poc || "—"}</p></div>
-            </div>)}
-          </div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No execution items recorded.</p>}
+          <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Test execution summary</h4><p className="mt-0.5 text-[11px] text-slate-400">All execution counts, estimates, handoffs, bugs, and comments.</p></div>
+          {report.execution.length ? <div className="space-y-2">{report.execution.map((entry) => <article key={entry.id} className="sprint-report-field-card rounded-lg border border-slate-100 p-3"><h5 className="mb-2 text-xs font-bold text-slate-700">{entry.area}</h5><div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <ReportField label="Total test cases">{entry.totalTestCases ?? "—"}</ReportField>
+            <ReportField label="Test cases executed">{entry.testCasesExecuted ?? "—"}</ReportField>
+            <ReportField label="% completion">{completionPercent(entry.testCasesExecuted, entry.totalTestCases, entry.completion)}</ReportField>
+            <ReportField label="Test cases passed">{entry.testCasesPassed ?? "—"}</ReportField>
+            <ReportField label="Pass %">{asPercent(entry.testCasesPassed, entry.totalTestCases)}</ReportField>
+            <ReportField label="Blocked">{entry.blocked ?? "—"}</ReportField>
+            <ReportField label="Blocked reason">{entry.blockedReason}</ReportField>
+            <ReportField label="ETA to unblock">{entry.etaToUnblock}</ReportField>
+            <ReportField label="Progress update to unblock">{entry.progressUpdateToUnblock}</ReportField>
+            <ReportField label="Owner">{entry.owner}</ReportField>
+            <ReportField label="POC / SL">{entry.poc}</ReportField>
+            <ReportField label="To do">{entry.toDo ?? "—"}</ReportField>
+            <ReportField label="To do %">{asPercent(entry.toDo, entry.totalTestCases)}</ReportField>
+            <ReportField label="Test cases failed">{entry.failed ?? "—"}</ReportField>
+            <ReportField label="Fail %">{asPercent(entry.failed, entry.totalTestCases)}</ReportField>
+            <ReportField label="Exploratory tests added">{entry.exploratoryTests}</ReportField>
+            <ReportField label="Bugs submitted">{entry.bugs.join(", ")}</ReportField>
+            <ReportField label="Additional comments">{entry.notes}</ReportField>
+          </div></article>)}</div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No execution items recorded.</p>}
         </section>
 
         {project.risks.length > 0 && <section className="rounded-xl border border-slate-200/80 p-4">
@@ -130,7 +145,8 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: {
           <div className="space-y-2">{project.risks.map((risk) => <div key={risk.id} className="rounded-lg border border-slate-100 bg-slate-50/50 p-3"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start"><div><p className="text-xs font-bold text-slate-700">{risk.description}</p>{risk.notes && <p className="mt-1 whitespace-pre-wrap text-[11px] leading-5 text-slate-500">{risk.notes}</p>}</div><div className="flex shrink-0 items-center gap-3"><StatusBadge status={risk.status} compact /><span className="text-[10px] font-medium text-slate-400">Owner: {risk.owner || "Unassigned"}</span></div></div></div>)}</div>
         </section>}
 
-        {project.notes.trim() && <section className="rounded-xl border border-slate-200/80 p-4"><div className="mb-2 flex items-center gap-2"><FileText size={15} className="text-[#37b9a5]" /><h4 className="text-sm font-bold text-slate-800">Notes</h4></div><p className="whitespace-pre-wrap rounded-lg bg-[#f7f9fc] p-3 text-xs leading-5 text-slate-600">{project.notes}</p></section>}
+        {project.notes.trim() && <section className="rounded-xl border border-slate-200/80 p-4"><div className="mb-2 flex items-center gap-2"><FileText size={15} className="text-[#37b9a5]" /><h4 className="text-sm font-bold text-slate-800">Notes</h4></div><p className="whitespace-pre-wrap break-words rounded-lg bg-[#f7f9fc] p-3 text-xs leading-5 text-slate-600 [overflow-wrap:anywhere]">{project.notes}</p></section>}
+        {report.additionalNotes.trim() && <section className="rounded-xl border border-slate-200/80 p-4"><div className="mb-2 flex items-center gap-2"><FileText size={15} className="text-[#37b9a5]" /><h4 className="text-sm font-bold text-slate-800">Additional report notes</h4></div><p className="whitespace-pre-wrap break-words rounded-lg bg-[#f7f9fc] p-3 text-xs leading-5 text-slate-600 [overflow-wrap:anywhere]">{report.additionalNotes}</p></section>}
       </div>
     </article>
   );
