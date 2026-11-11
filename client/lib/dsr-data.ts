@@ -67,6 +67,9 @@ export interface PreparationItem {
   status: StageStatus;
   eta: string;
   blockedReason: string;
+  etaToUnblock: string;
+  owner: string;
+  comments: string;
 }
 
 export type DefectSeverity = "P1" | "P2" | "P3";
@@ -157,9 +160,9 @@ const emptyProjectReport: ProjectReport = {
 };
 
 export const createDefaultPreparationItems = (): PreparationItem[] => [
-  { id: "hardware-readiness", name: "Hardware Readiness", status: "Yet to Start", eta: "", blockedReason: "" },
-  { id: "solution-readiness", name: "Solution Readiness", status: "Yet to Start", eta: "", blockedReason: "" },
-  { id: "new-features-test-case-design", name: "New Features Test Case Design", status: "Yet to Start", eta: "", blockedReason: "" },
+  { id: "hardware-readiness", name: "Hardware Readiness", status: "Yet to Start", eta: "", blockedReason: "", etaToUnblock: "", owner: "", comments: "" },
+  { id: "solution-readiness", name: "Solution Readiness", status: "Yet to Start", eta: "", blockedReason: "", etaToUnblock: "", owner: "", comments: "" },
+  { id: "new-features-test-case-design", name: "New Features Test Case Design", status: "Yet to Start", eta: "", blockedReason: "", etaToUnblock: "", owner: "", comments: "" },
 ];
 
 export const executionReportAreas = [
@@ -218,7 +221,7 @@ export function normalizeProject(project: Project): NormalizedProject {
   return {
     ...project,
     report: { ...emptyProjectReport, ...project.report },
-    preparation: project.preparation?.length ? project.preparation : createDefaultPreparationItems(),
+    preparation: (project.preparation?.length ? project.preparation : createDefaultPreparationItems()).map((item) => ({ etaToUnblock: "", owner: "", comments: "", ...item })),
     execution,
     defects: project.defects ?? [],
     validatedDefects: project.validatedDefects ?? [],

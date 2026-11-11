@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CalendarDays, Check, CircleAlert, Clock3, Download, FileImage, FileText, Printer, ShieldAlert, Users } from "lucide-react";
 import { toPng } from "html-to-image";
 import { useOutletContext } from "react-router-dom";
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
-import { PageTitle, ProgressBar, SectionHeading, StatusBadge } from "@/components/dsr/DsrPrimitives";
-import { projectCompletion, type Project, type Sprint } from "@/lib/dsr-data";
+import { PageTitle, SectionHeading, StatusBadge } from "@/components/dsr/DsrPrimitives";
+import { normalizeProject, projectCompletion, type Project, type Sprint } from "@/lib/dsr-data";
 
 const localDate = () => {
   const now = new Date();
@@ -49,12 +50,38 @@ const statusShadows: Record<string, string> = {
 };
 
 const safeFileName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-const reportStageNames = ["Functionality Execution", "Non Functionality Execution", "Automation- Print", "Automation- Scan"];
+const reportStageNames = ["Exploratory", "TC Design", "Functionality Execution", "Non Functionality Execution", "Automation- Print", "Automation- Scan"];
 const normalizeStageName = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
+const asPercent = (part: number | null | undefined, whole: number | null | undefined) => whole && whole > 0 && part !== null && part !== undefined ? `${Math.round((part / whole) * 10000) / 100}%` : "—";
+const completionPercent = (executed: number | null | undefined, total: number | null | undefined, completion: number | null) => total && total > 0 && executed !== null && executed !== undefined ? asPercent(executed, total) : completion === null ? "—" : `${Math.round(completion * 100)}%`;
 
-function ProjectReportCard({ project, index }: { project: Project; index: number }) {
+function ReportDataTable({ rows }: { rows: [string, ReactNode][] }) {
+  return <div className="min-w-0 overflow-hidden rounded-lg border border-slate-100"><table className="w-full table-fixed border-collapse text-left text-[10px]"><tbody className="divide-y divide-slate-100">{rows.map(([label, value]) => <tr key={label}><th scope="row" className="w-[42%] break-words bg-slate-50 px-2 py-1.5 font-semibold text-slate-500 [overflow-wrap:anywhere]">{label}</th><td className="break-words whitespace-pre-wrap px-2 py-1.5 text-slate-700 [overflow-wrap:anywhere]">{value === null || value === undefined || value === "" ? "—" : value}</td></tr>)}</tbody></table></div>;
+}
+
+function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: { project: Project; index: number; sprintStartDate: string; sprintEndDate: string }) {
+  const report = normalizeProject(project);
   const status = executionStatus(project);
   const completion = projectCompletion(project);
+  const defectSeverities = ["P1", "P2", "P3"] as const;
+  const defectSummary = ["Open", "In Progress", "Fixed / In Verification", "Closed"].map((defectStatus) => ({
+    status: defectStatus,
+    counts: defectSeverities.map((severity) => report.defects.filter((defect) => (defect.status === defectStatus || (defectStatus === "In Progress" && defect.status === "Development")) && defect.severity === severity).length),
+  }));
+  const chartExecution = report.execution.map((item) => {
+    const total = item.totalTestCases ?? 0;
+    return {
+      category: item.area,
+      "Pass %": total ? Math.round(((item.testCasesPassed ?? 0) / total) * 10000) / 100 : 0,
+      "Block %": total ? Math.round(((item.blocked ?? 0) / total) * 10000) / 100 : 0,
+      "To Do %": total ? Math.round(((item.toDo ?? 0) / total) * 10000) / 100 : 0,
+      "Fail %": total ? Math.round(((item.failed ?? 0) / total) * 10000) / 100 : 0,
+    };
+  });
+  const hasExecutionMetrics = report.execution.some((item) => [item.totalTestCases, item.testCasesPassed, item.blocked, item.toDo, item.failed].some((value) => value !== null));
+  const chartDefectSummary = defectSummary.map(({ status: name, counts }) => ({ status: name, P1: counts[0], P2: counts[1], P3: counts[2] }));
+  const hasDefects = report.defects.length > 0;
+  const reportStages = [...reportStageNames, ...project.stages.filter((stage) => stage.isCustom).map((stage) => stage.name)];
 
   return (
     <article className={`sprint-report-card overflow-hidden rounded-2xl border border-slate-200/80 bg-white ${statusShadows[status]}`}>
@@ -71,11 +98,26 @@ function ProjectReportCard({ project, index }: { project: Project; index: number
 
       <div className="space-y-4 p-5 md:p-6">
         <section className="mb-4 rounded-xl border border-slate-200/80 bg-white p-4">
-          <SectionHeading title="High level status report" description="Status across the four DSR execution categories." />
-          <div className="sprint-report-stage-grid grid gap-2 sm:grid-cols-2 md:grid-cols-4">{reportStageNames.map((name) => {
+          <SectionHeading title="High level status report" description="Sprint dates, test environment, and status across project stages." />
+          <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {[{ label: "Sprint dates", value: sprintStartDate && sprintEndDate ? `${sprintStartDate} – ${sprintEndDate}` : "Not set" }, { label: "Test environment", value: report.report.testEnvironment || "Not set" }, { label: "Firmware version", value: report.report.firmwareVersion || "Not set" }, { label: "Solution version", value: report.report.solutionVersion || "Not set" }, { label: "Targeted devices", value: report.report.targetedDevices || "Not set" }].map((item) => <div key={item.label} className="rounded-lg border border-slate-100 bg-slate-50/60 p-2.5"><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{item.label}</p><p className="mt-1 whitespace-pre-wrap text-[11px] font-semibold leading-4 text-slate-700">{item.value}</p></div>)}
+          </div>
+          <div className="sprint-report-stage-grid grid gap-2 sm:grid-cols-2 md:grid-cols-4">{reportStages.map((name) => {
             const stage = project.stages.find((item) => normalizeStageName(item.name) === normalizeStageName(name));
             return <div key={name} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5"><div className="mb-1.5 flex items-start justify-between gap-1.5"><p className="text-[11px] font-bold leading-4 text-slate-700">{name}</p><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#37b9a5]" /></div><div className="mt-1"><StatusBadge status={stage?.status ?? "N/A"} compact /></div></div>;
           })}</div>
+        </section>
+
+        <section className="rounded-xl border border-slate-200/80 p-4">
+          <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Test preparation summary</h4><p className="mt-0.5 text-[11px] text-slate-400">Readiness, estimates, blockers, owners, and comments.</p></div>
+          {report.preparation.length ? <div className="space-y-2">{report.preparation.map((item) => <article key={item.id} className="sprint-report-field-card rounded-lg border border-slate-100 p-3"><h5 className="mb-2 text-xs font-bold text-slate-700">{item.name}</h5><div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-2"><ReportDataTable rows={[["Status", <StatusBadge status={item.status} compact />], ["ETA for completion", item.eta], ["Blocked reason", item.blockedReason]]} /><ReportDataTable rows={[["ETA to unblock", item.etaToUnblock], ["Owner", item.owner], ["Comments", item.comments]]} /></div></article>)}</div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No preparation items recorded.</p>}
+        </section>
+
+        <section className="rounded-xl border border-slate-200/80 p-4">
+          <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Defect summary</h4><p className="mt-0.5 text-[11px] text-slate-400">Defect counts by workflow status and severity, followed by defect details.</p></div>
+          <div className="min-w-0 overflow-hidden rounded-lg border border-slate-100"><table className="w-full table-fixed border-collapse text-left text-[10px]"><thead><tr className="border-b border-slate-100 bg-slate-50 text-[9px] font-bold uppercase tracking-wider text-slate-400"><th className="w-[40%] px-2 py-2">Status</th>{defectSeverities.map((severity) => <th key={severity} className="px-1 py-2">{severity}</th>)}<th className="px-1 py-2">Total</th></tr></thead><tbody className="divide-y divide-slate-100">{defectSummary.map((row) => <tr key={row.status} className="text-slate-600"><th scope="row" className="break-words px-2 py-2 font-semibold text-slate-700 [overflow-wrap:anywhere]">{row.status}</th>{row.counts.map((count, index) => <td key={defectSeverities[index]} className="px-1 py-2 text-center">{count}</td>)}<td className="px-1 py-2 text-center font-bold text-slate-700">{row.counts.reduce((sum, count) => sum + count, 0)}</td></tr>)}<tr className="border-t border-slate-200 text-slate-700"><th scope="row" className="break-words px-2 py-2 font-bold [overflow-wrap:anywhere]">Total defects</th>{defectSeverities.map((severity) => <td key={severity} className="px-1 py-2 text-center font-bold">{report.defects.filter((defect) => defect.severity === severity).length}</td>)}<td className="px-1 py-2 text-center font-bold">{report.defects.length}</td></tr></tbody></table></div>
+          {report.defects.length ? <div className="mt-3 min-w-0 overflow-hidden rounded-lg border border-slate-100"><table className="w-full table-fixed border-collapse text-left text-[9px]"><thead><tr className="border-b border-slate-100 bg-slate-50 font-bold uppercase tracking-wider text-slate-400">{["Defect ID", "Defect title", "Test cases impacted", "Status", "Severity", "Owner", "POC / SL", "Comments", "Link"].map((label) => <th key={label} className="px-1.5 py-2">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{report.defects.map((defect) => <tr key={defect.id} className="align-top text-slate-600"><td className="break-words px-1.5 py-2 font-semibold text-slate-700 [overflow-wrap:anywhere]">{defect.id}</td><td className="break-words px-1.5 py-2 [overflow-wrap:anywhere]">{defect.title || "—"}</td><td className="break-words px-1.5 py-2 [overflow-wrap:anywhere]">{defect.impactedTestCases || "—"}</td><td className="break-words px-1.5 py-2 [overflow-wrap:anywhere]">{defect.status}</td><td className="break-words px-1.5 py-2 font-bold [overflow-wrap:anywhere]">{defect.severity}</td><td className="break-words px-1.5 py-2 [overflow-wrap:anywhere]">{defect.owner || "—"}</td><td className="break-words px-1.5 py-2 [overflow-wrap:anywhere]">{defect.poc || "—"}</td><td className="break-words whitespace-pre-wrap px-1.5 py-2 [overflow-wrap:anywhere]">{defect.comments || "—"}</td><td className="break-words whitespace-pre-wrap px-1.5 py-2 [overflow-wrap:anywhere]">{defect.link || "—"}</td></tr>)}</tbody></table></div> : <p className="mt-3 rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No defects recorded.</p>}
+          {report.validatedDefects.length > 0 && <p className="mt-3 text-[10px] text-slate-500"><strong className="text-slate-700">Validated defects:</strong> {report.validatedDefects.join(", ")}</p>}
         </section>
 
         {project.blockers.length > 0 && <section className="rounded-xl border border-slate-200/80 p-4">
@@ -89,26 +131,25 @@ function ProjectReportCard({ project, index }: { project: Project; index: number
         </section>}
 
         <section className="rounded-xl border border-slate-200/80 p-4">
-          <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Current execution status</h4><p className="mt-0.5 text-[11px] text-slate-400">Completion, defects, ownership, and handoffs for each execution area.</p></div>
-          {project.execution.length ? <div className="overflow-hidden rounded-lg border border-slate-100">
-            <div className="sprint-report-execution-header hidden grid-cols-[1.15fr_1.1fr_1fr_1.7fr_0.85fr_0.95fr] gap-3 border-b border-slate-100 bg-slate-50 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-slate-400 md:grid"><span>Execution area</span><span>Completion</span><span>Bugs submitted</span><span>Additional notes</span><span>Owner</span><span>POC / SL</span></div>
-            {project.execution.map((entry) => <div key={entry.id} className="sprint-report-execution-row grid gap-3 border-b border-slate-100 p-3 last:border-b-0 md:grid-cols-[1.15fr_1.1fr_1fr_1.7fr_0.85fr_0.95fr] md:items-start">
-              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Execution area</p><p className="mt-1 text-xs font-bold text-slate-700">{entry.area}</p></div>
-              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Completion</p><div className="mt-1"><ProgressBar value={entry.completion} /></div></div>
-              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Bugs submitted</p><div className="mt-1 flex flex-wrap gap-1">{entry.bugs.length ? entry.bugs.map((bug) => <span key={bug} className="rounded-md bg-[#fff4df] px-1.5 py-1 text-[9px] font-bold text-[#ae7d22]">{bug}</span>) : <span className="text-xs text-slate-400">—</span>}</div></div>
-              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Additional notes</p><p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-500">{entry.notes || "—"}</p></div>
-              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Owner</p><p className="mt-1 text-xs text-slate-600">{entry.owner || "—"}</p></div>
-              <div><p className="sprint-report-mobile-label text-[9px] font-bold uppercase tracking-wider text-slate-400 md:hidden">POC / SL</p><p className="mt-1 text-xs text-slate-600">{entry.poc || "—"}</p></div>
-            </div>)}
-          </div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No execution items recorded.</p>}
+          <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Test execution summary</h4><p className="mt-0.5 text-[11px] text-slate-400">All execution counts, estimates, handoffs, bugs, and comments.</p></div>
+          {report.execution.length ? <div className="space-y-2">{report.execution.map((entry) => <article key={entry.id} className="sprint-report-field-card rounded-lg border border-slate-100 p-3"><h5 className="mb-2 text-xs font-bold text-slate-700">{entry.area}</h5><div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-2">
+            <ReportDataTable rows={[["Total test cases", entry.totalTestCases ?? "—"], ["Test cases executed", entry.testCasesExecuted ?? "—"], ["% completion", completionPercent(entry.testCasesExecuted, entry.totalTestCases, entry.completion)], ["Test cases passed", entry.testCasesPassed ?? "—"], ["Pass %", asPercent(entry.testCasesPassed, entry.totalTestCases)], ["Blocked", entry.blocked ?? "—"], ["Blocked reason", entry.blockedReason], ["ETA to unblock", entry.etaToUnblock], ["Progress update to unblock", entry.progressUpdateToUnblock]]} />
+            <ReportDataTable rows={[["Owner", entry.owner], ["POC / SL", entry.poc], ["To do", entry.toDo ?? "—"], ["To do %", asPercent(entry.toDo, entry.totalTestCases)], ["Test cases failed", entry.failed ?? "—"], ["Fail %", asPercent(entry.failed, entry.totalTestCases)], ["Exploratory tests added", entry.exploratoryTests], ["Bugs submitted", entry.bugs.join(", ")], ["Additional comments", entry.notes]]} />
+          </div></article>)}</div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No execution items recorded.</p>}
         </section>
+
+        {(hasExecutionMetrics || hasDefects) && <div className="grid gap-4 md:grid-cols-2">
+          {hasExecutionMetrics && <section className="min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Test execution outcomes" description="Pass, blocked, to-do, and failed percentages by execution area." /><div className="mt-3 h-[260px] w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartExecution} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="category" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis domain={[0, 100]} tick={{ fontSize: 9 }} unit="%" /><Tooltip formatter={(value) => `${value}%`} /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar dataKey="Pass %" fill="#5e9bd6" radius={[3, 3, 0, 0]} /><Bar dataKey="Block %" fill="#f3a477" radius={[3, 3, 0, 0]} /><Bar dataKey="To Do %" fill="#aab0ba" radius={[3, 3, 0, 0]} /><Bar dataKey="Fail %" fill="#f07167" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
+          {hasDefects && <section className="min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Defects by status and severity" description="Defect counts across workflow status and severity." /><div className="mt-3 h-[260px] w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartDefectSummary} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="status" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis allowDecimals={false} tick={{ fontSize: 9 }} /><Tooltip /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar dataKey="P1" fill="#ef806f" radius={[3, 3, 0, 0]} /><Bar dataKey="P2" fill="#f3c969" radius={[3, 3, 0, 0]} /><Bar dataKey="P3" fill="#5e9bd6" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
+        </div>}
 
         {project.risks.length > 0 && <section className="rounded-xl border border-slate-200/80 p-4">
           <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Current project risks</h4><p className="mt-0.5 text-[11px] text-slate-400">Risks to monitor through the next reporting cycle.</p></div>
           <div className="space-y-2">{project.risks.map((risk) => <div key={risk.id} className="rounded-lg border border-slate-100 bg-slate-50/50 p-3"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start"><div><p className="text-xs font-bold text-slate-700">{risk.description}</p>{risk.notes && <p className="mt-1 whitespace-pre-wrap text-[11px] leading-5 text-slate-500">{risk.notes}</p>}</div><div className="flex shrink-0 items-center gap-3"><StatusBadge status={risk.status} compact /><span className="text-[10px] font-medium text-slate-400">Owner: {risk.owner || "Unassigned"}</span></div></div></div>)}</div>
         </section>}
 
-        {project.notes.trim() && <section className="rounded-xl border border-slate-200/80 p-4"><div className="mb-2 flex items-center gap-2"><FileText size={15} className="text-[#37b9a5]" /><h4 className="text-sm font-bold text-slate-800">Notes</h4></div><p className="whitespace-pre-wrap rounded-lg bg-[#f7f9fc] p-3 text-xs leading-5 text-slate-600">{project.notes}</p></section>}
+        {project.notes.trim() && <section className="rounded-xl border border-slate-200/80 p-4"><div className="mb-2 flex items-center gap-2"><FileText size={15} className="text-[#37b9a5]" /><h4 className="text-sm font-bold text-slate-800">Notes</h4></div><p className="whitespace-pre-wrap break-words rounded-lg bg-[#f7f9fc] p-3 text-xs leading-5 text-slate-600 [overflow-wrap:anywhere]">{project.notes}</p></section>}
+        {report.additionalNotes.trim() && <section className="rounded-xl border border-slate-200/80 p-4"><div className="mb-2 flex items-center gap-2"><FileText size={15} className="text-[#37b9a5]" /><h4 className="text-sm font-bold text-slate-800">Additional report notes</h4></div><p className="whitespace-pre-wrap break-words rounded-lg bg-[#f7f9fc] p-3 text-xs leading-5 text-slate-600 [overflow-wrap:anywhere]">{report.additionalNotes}</p></section>}
       </div>
     </article>
   );
@@ -211,7 +252,7 @@ export default function Reports() {
       {missingHistory && <div className="rounded-xl border border-[#f2dfaa] bg-[#fffaf0] px-4 py-3 text-xs leading-5 text-[#8a6829]"><strong>Historical snapshot unavailable.</strong> This date predates saved daily history, so this report shows the current project details rather than a verified past-day state.</div>}
 
       <div className="flex items-end justify-between gap-3 px-1"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#31a896]">Portfolio detail</p><h2 className="mt-1 text-lg font-bold text-slate-900">Project-by-project pulse</h2></div><p className="text-[10px] font-semibold text-slate-400">{reportProjects.length} {reportProjects.length === 1 ? "PROJECT" : "PROJECTS"}</p></div>
-      <div className="sprint-report-project-list space-y-4">{reportProjects.map((project, index) => <ProjectReportCard key={project.id} project={project} index={index} />)}</div>
+      <div className="sprint-report-project-list space-y-4">{reportProjects.map((project, index) => <ProjectReportCard key={project.id} project={project} index={index} sprintStartDate={snapshot?.sprintStartDate ?? selectedSprint?.startDate ?? ""} sprintEndDate={snapshot?.sprintEndDate ?? selectedSprint?.endDate ?? ""} />)}</div>
       <footer className="flex flex-col justify-between gap-1 border-t border-slate-200 px-1 pt-3 text-[10px] font-medium text-slate-400 sm:flex-row"><span>QALens · QA Engineering</span><span>{snapshot ? `Snapshot captured ${formatDate(snapshot.date)}` : "Generated from current project data"}</span></footer>
     </div>}
   </div>;
