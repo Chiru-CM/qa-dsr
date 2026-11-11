@@ -38,7 +38,20 @@ export interface Blocker {
   notes: string;
 }
 
-export interface ExecutionItem {
+export interface ExecutionMetrics {
+  totalTestCases?: number | null;
+  testCasesExecuted?: number | null;
+  testCasesPassed?: number | null;
+  blocked?: number | null;
+  blockedReason?: string;
+  etaToUnblock?: string;
+  progressUpdateToUnblock?: string;
+  toDo?: number | null;
+  failed?: number | null;
+  exploratoryTests?: string;
+}
+
+export interface ExecutionItem extends ExecutionMetrics {
   id: string;
   area: string;
   completion: number | null;
@@ -46,6 +59,38 @@ export interface ExecutionItem {
   notes: string;
   owner: string;
   poc: string;
+}
+
+export interface PreparationItem {
+  id: string;
+  name: string;
+  status: StageStatus;
+  eta: string;
+  blockedReason: string;
+}
+
+export type DefectSeverity = "P1" | "P2" | "P3";
+export type DefectStatus = "Open" | "In Progress" | "Development" | "Fixed / In Verification" | "Closed";
+
+export interface Defect {
+  id: string;
+  title: string;
+  impactedTestCases: string;
+  status: DefectStatus;
+  severity: DefectSeverity;
+  comments: string;
+  owner: string;
+  poc: string;
+  link: string;
+}
+
+export interface ProjectReport {
+  sprintStartDate: string;
+  sprintEndDate: string;
+  testEnvironment: string;
+  firmwareVersion: string;
+  solutionVersion: string;
+  targetedDevices: string;
 }
 
 export interface Risk {
@@ -67,6 +112,11 @@ export interface Project {
   execution: ExecutionItem[];
   risks: Risk[];
   notes: string;
+  report?: ProjectReport;
+  preparation?: PreparationItem[];
+  defects?: Defect[];
+  validatedDefects?: string[];
+  additionalNotes?: string;
   functionalityStatus: StageStatus;
   nonFunctionalityStatus: StageStatus;
   automationStatus: StageStatus;
@@ -85,6 +135,95 @@ export interface DailySnapshot {
   date: string;
   capturedAt: string;
   projects: Project[];
+}
+
+export type NormalizedExecutionItem = ExecutionItem & Required<ExecutionMetrics>;
+export type NormalizedProject = Omit<Project, "report" | "preparation" | "execution" | "defects" | "validatedDefects" | "additionalNotes"> & {
+  report: ProjectReport;
+  preparation: PreparationItem[];
+  execution: NormalizedExecutionItem[];
+  defects: Defect[];
+  validatedDefects: string[];
+  additionalNotes: string;
+};
+
+const emptyProjectReport: ProjectReport = {
+  sprintStartDate: "",
+  sprintEndDate: "",
+  testEnvironment: "",
+  firmwareVersion: "",
+  solutionVersion: "",
+  targetedDevices: "",
+};
+
+export const createDefaultPreparationItems = (): PreparationItem[] => [
+  { id: "hardware-readiness", name: "Hardware Readiness", status: "Yet to Start", eta: "", blockedReason: "" },
+  { id: "solution-readiness", name: "Solution Readiness", status: "Yet to Start", eta: "", blockedReason: "" },
+  { id: "new-features-test-case-design", name: "New Features Test Case Design", status: "Yet to Start", eta: "", blockedReason: "" },
+];
+
+export const executionReportAreas = [
+  "Functionality",
+  "Card Reader",
+  "Non-Functionality",
+  "Automation - Print",
+  "Automation - Scan",
+  "New Features Exploratory",
+  "Defect Validation",
+] as const;
+
+const executionAreaKey = (area: string) => {
+  const key = area.toLowerCase().replace(/[^a-z]/g, "");
+  if (key === "functionalityexecution") return "functionality";
+  if (key === "nonfunctionalityexecution") return "nonfunctionality";
+  if (key === "newfeatures") return "newfeaturesexploratory";
+  return key;
+};
+
+const normalizeExecutionItem = (item: ExecutionItem): NormalizedExecutionItem => ({
+  totalTestCases: null,
+  testCasesExecuted: null,
+  testCasesPassed: null,
+  blocked: null,
+  blockedReason: "",
+  etaToUnblock: "",
+  progressUpdateToUnblock: "",
+  toDo: null,
+  failed: null,
+  exploratoryTests: "",
+  ...item,
+});
+
+export function normalizeProject(project: Project): NormalizedProject {
+  const existingExecution = project.execution.map(normalizeExecutionItem);
+  const usedIds = new Set<string>();
+  const execution = executionReportAreas.map((area): NormalizedExecutionItem => {
+    const existing = existingExecution.find((item) => executionAreaKey(item.area) === executionAreaKey(area) && !usedIds.has(item.id));
+    if (existing) {
+      usedIds.add(existing.id);
+      return { ...existing, area };
+    }
+    return normalizeExecutionItem({
+      id: `report-${area.toLowerCase().replace(/[^a-z]/g, "-")}`,
+      area,
+      completion: null,
+      bugs: [],
+      notes: "",
+      owner: project.owner,
+      poc: "",
+    });
+  });
+  execution.push(...existingExecution.filter((item) => !usedIds.has(item.id) && !execution.some((row) => row.id === item.id)));
+
+  return {
+    ...project,
+    report: { ...emptyProjectReport, ...project.report },
+    preparation: project.preparation?.length ? project.preparation : createDefaultPreparationItems(),
+    execution,
+    defects: project.defects ?? [],
+    validatedDefects: project.validatedDefects ?? [],
+    additionalNotes: project.additionalNotes ?? "",
+  };
 }
 
 export const stageOptions = [
