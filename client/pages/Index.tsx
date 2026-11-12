@@ -155,19 +155,18 @@ export default function Index() {
     if (!targetSprint) return;
     const data = new FormData(event.currentTarget);
     const name = String(data.get("name") ?? "").trim();
-    const owner = String(data.get("owner") ?? "").trim();
     const status = String(data.get("status") ?? "Yet to Start") as ProjectStatus;
     const id = crypto.randomUUID();
     const stageNames = ["Exploratory", "TC Design", ...sprintCategories];
     const newProject: Project = {
       id,
       name,
-      owner,
+      owner: "",
       status,
       lastUpdated: todayLabel(),
       stages: stageNames.map((stageName, index) => ({ id: `${id}-stage-${index}`, name: stageName, status: "Yet to Start" })),
       blockers: [],
-      execution: sprintCategories.map((area, index) => ({ id: `${id}-execution-${index}`, area, completion: null, bugs: [], notes: "", owner, poc: "" })),
+      execution: sprintCategories.map((area, index) => ({ id: `${id}-execution-${index}`, area, completion: null, bugs: [], notes: "", owner: "", poc: "" })),
       risks: [],
       notes: "",
       functionalityStatus: "Yet to Start",
@@ -236,7 +235,6 @@ export default function Index() {
       </div>}
       <form onSubmit={createProject} className="space-y-4">
         <label className="block"><span className="mb-1.5 block text-xs font-semibold text-slate-600">Project name</span><input name="name" required placeholder="e.g. SafeQ Cloud 26.1" className="form-input" /></label>
-        <label className="block"><span className="mb-1.5 block text-xs font-semibold text-slate-600">Owner</span><input name="owner" className="form-input" /></label>
         <label className="block"><span className="mb-1.5 block text-xs font-semibold text-slate-600">Overall status</span><select name="status" defaultValue="Yet to Start" className="form-input">{statusOptions.filter((status) => !["N/A", "Not Yet Started", "Complete"].includes(status)).map((status) => <option key={status}>{status}</option>)}</select></label>
         <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={closeProjectModal} className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100">Cancel</button><button className="rounded-lg bg-[#10263d] px-4 py-2 text-xs font-bold text-white">Create project</button></div>
       </form>
