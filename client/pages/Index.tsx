@@ -84,7 +84,6 @@ export default function Index() {
   const [sprintModalOpen, setSprintModalOpen] = useState(false);
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [targetSprintId, setTargetSprintId] = useState("");
-  const [existingProjectId, setExistingProjectId] = useState("");
   const [sprintError, setSprintError] = useState("");
   const targetSprint = sprints.find((sprint) => sprint.id === targetSprintId);
 
@@ -122,22 +121,12 @@ export default function Index() {
 
   const openProjectModal = (sprintId: string) => {
     setTargetSprintId(sprintId);
-    setExistingProjectId("");
     setProjectModalOpen(true);
   };
 
   const closeProjectModal = () => {
     setProjectModalOpen(false);
-    setExistingProjectId("");
     setTargetSprintId("");
-  };
-
-  const addExistingProject = () => {
-    if (!targetSprint || !existingProjectId) return;
-    setSprints((current) => current.map((sprint) => sprint.id === targetSprint.id && !sprint.projectIds.includes(existingProjectId)
-      ? { ...sprint, projectIds: [...sprint.projectIds, existingProjectId] }
-      : sprint));
-    closeProjectModal();
   };
 
   const updateSprintStatus = (sprintId: string, status: SprintStatus) => {
@@ -228,11 +217,6 @@ export default function Index() {
     </Modal>
 
     <Modal open={projectModalOpen} onClose={closeProjectModal} title="Add project to sprint" description={targetSprint ? `Add an existing project or create one for ${targetSprint.name}.` : undefined}>
-      {targetSprint && projects.some((project) => !targetSprint.projectIds.includes(project.id)) && <div className="mb-5 rounded-xl bg-slate-50 p-3.5">
-        <p className="mb-2 text-xs font-bold text-slate-700">Add an existing project</p>
-        <div className="flex gap-2"><select value={existingProjectId} onChange={(event) => setExistingProjectId(event.target.value)} className="form-input"><option value="">Choose a project</option>{projects.filter((project) => !targetSprint.projectIds.includes(project.id)).map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select><button type="button" disabled={!existingProjectId} onClick={addExistingProject} className="shrink-0 rounded-lg bg-[#eaf8f5] px-3 text-xs font-bold text-[#218f82] transition hover:bg-[#d9f3ee] disabled:cursor-not-allowed disabled:opacity-50">Add</button></div>
-        <div className="my-4 flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400"><span className="h-px flex-1 bg-slate-200" />or create new<span className="h-px flex-1 bg-slate-200" /></div>
-      </div>}
       <form onSubmit={createProject} className="space-y-4">
         <label className="block"><span className="mb-1.5 block text-xs font-semibold text-slate-600">Project name</span><input name="name" required placeholder="e.g. SafeQ Cloud 26.1" className="form-input" /></label>
         <label className="block"><span className="mb-1.5 block text-xs font-semibold text-slate-600">Overall status</span><select name="status" defaultValue="Yet to Start" className="form-input">{statusOptions.filter((status) => !["N/A", "Not Yet Started", "Complete"].includes(status)).map((status) => <option key={status}>{status}</option>)}</select></label>
