@@ -209,10 +209,15 @@ function ProjectDetails() {
       <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
         <div className="grid gap-3 sm:grid-cols-2">
           <SummaryValue label="Sprint dates" value={projectSprint ? `${projectSprint.startDate} – ${projectSprint.endDate}` : "Not set"} className="sm:col-span-2" />
-          <SummaryValue label="Test environment" value={reportProject.report.testEnvironment || "Not set"} />
-          <SummaryValue label="Firmware version" value={reportProject.report.firmwareVersion || "Not set"} />
-          <SummaryValue label="Solution version" value={reportProject.report.solutionVersion || "Not set"} />
-          <SummaryValue label="Targeted devices" value={reportProject.report.targetedDevices || "Not set"} />
+          <div className="sm:col-span-2 rounded-lg border border-slate-100 bg-white p-3">
+            <p className="text-xs font-bold text-slate-700">Test environment</p>
+            <p className="mt-1 text-xs font-semibold text-slate-700">{reportProject.report.testEnvironment || "Not set"}</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <SummaryValue label="Firmware version" value={reportProject.report.firmwareVersion || "Not set"} />
+              <SummaryValue label="Solution version" value={reportProject.report.solutionVersion || "Not set"} />
+              <SummaryValue label="Targeted devices" value={reportProject.report.targetedDevices || "Not set"} />
+            </div>
+          </div>
         </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{visibleStages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-3"><p className="mb-2 text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><select aria-label={`${stage.name} status`} value={stage.status} onChange={(event) => updateStageStatus(stage.id, stage.name, stage.isCustom, event.target.value as StageStatus)} className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-600 outline-none focus:border-[#69cbbb]">{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></div>)}</div>
       </div>
