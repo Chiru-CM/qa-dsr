@@ -4,7 +4,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
 import { Modal } from "@/components/dsr/Modal";
 import { EmptyState, PageTitle, StatusBadge } from "@/components/dsr/DsrPrimitives";
-import { statusOptions, type Project, type ProjectStatus, type Sprint, type SprintStatus, type StageStatus } from "@/lib/dsr-data";
+import { statusOptions, type Project, type ProjectStatus, type Sprint, type StageStatus } from "@/lib/dsr-data";
 
 const sprintCategories = [
   "Functionality Execution",
@@ -129,10 +129,6 @@ export default function Index() {
     setTargetSprintId("");
   };
 
-  const updateSprintStatus = (sprintId: string, status: SprintStatus) => {
-    setSprints((current) => current.map((sprint) => sprint.id === sprintId ? { ...sprint, status } : sprint));
-  };
-
   const removeProjectFromSprint = (sprintId: string, projectId: string) => {
     setSprints((current) => current.map((sprint) => sprint.id === sprintId
       ? { ...sprint, projectIds: sprint.projectIds.filter((id) => id !== projectId) }
@@ -186,9 +182,6 @@ export default function Index() {
               <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5"><span className="truncate text-sm font-bold text-slate-800">{sprint.name}</span><span className="flex items-center gap-1 text-[11px] font-medium text-slate-400"><CalendarDays size={12} />{formatDateRange(sprint.startDate, sprint.endDate)}</span></span>
               <span className="ml-auto shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">{sprintProjects.length} {sprintProjects.length === 1 ? "project" : "projects"}</span>
             </button>
-            <select aria-label={`Status for ${sprint.name}`} value={sprint.status ?? "In Progress"} onChange={(event) => updateSprintStatus(sprint.id, event.target.value as SprintStatus)} className={`h-8 shrink-0 rounded-full border px-3 text-[11px] font-semibold outline-none ${sprint.status === "Completed" ? "border-[#bce8d8] bg-[#e7f7f1] text-[#20866f]" : sprint.status === "Blocked" ? "border-[#f7c9c2] bg-[#fff0ed] text-[#c65e52]" : sprint.status === "Not Started" ? "border-slate-200 bg-slate-100 text-slate-500" : "border-[#c9dcfb] bg-[#eaf2ff] text-[#4071ba]"}`}>
-              {["Not Started", "In Progress", "Blocked", "Completed"].map((status) => <option key={status} value={status}>{status}</option>)}
-            </select>
           </div>
 
           {isExpanded && <div id={`sprint-content-${sprint.id}`} className="border-t border-slate-100 bg-slate-50/40 p-3 md:p-4">
