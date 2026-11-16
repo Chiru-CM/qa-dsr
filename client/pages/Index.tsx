@@ -4,7 +4,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
 import { Modal } from "@/components/dsr/Modal";
 import { EmptyState, PageTitle, StatusBadge } from "@/components/dsr/DsrPrimitives";
-import { statusOptions, type Project, type ProjectStatus, type Sprint, type Stage, type StageStatus } from "@/lib/dsr-data";
+import { statusOptions, type Project, type ProjectStatus, type Sprint, type StageStatus } from "@/lib/dsr-data";
 
 const sprintCategories = [
   "Functionality Execution",
@@ -13,7 +13,6 @@ const sprintCategories = [
   "Automation- Scan",
 ];
 const defaultStageNames = ["Exploratory", "TC Design", ...sprintCategories];
-const stageStatusOptions: StageStatus[] = [...statusOptions, "TBD"];
 
 const normalize = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
 const formatDate = (value: string) => new Intl.DateTimeFormat("en-US", {
@@ -49,9 +48,9 @@ function projectExecutionStatus(project: Project): ExecutionSummaryStatus {
   return "In Progress";
 }
 
-function ProjectStatusGrid({ projects, onRemoveProject, onUpdateStageStatus }: { projects: Project[]; onRemoveProject: (projectId: string) => void; onUpdateStageStatus: (projectId: string, stage: Stage, status: StageStatus) => void }) {
+function ProjectStatusGrid({ projects, onRemoveProject }: { projects: Project[]; onRemoveProject: (projectId: string) => void }) {
   if (!projects.length) {
-    return <EmptyState title="No projects in this sprint yet" description="Add a project to see its status and four-category execution overview." />;
+    return <EmptyState title="No projects in this sprint yet" description="Add a project to see its overall status and high-level stage statuses." />;
   }
 
   return <div className="space-y-1.5">
@@ -73,12 +72,10 @@ function ProjectStatusGrid({ projects, onRemoveProject, onUpdateStageStatus }: {
           <button onClick={() => onRemoveProject(project.id)} className="self-start rounded-md p-1.5 text-slate-400 transition hover:bg-[#fff0ed] hover:text-[#c65e52] sm:self-auto" aria-label={`Remove ${project.name} from sprint`} title="Remove from sprint"><FolderMinus size={14} /></button>
         </div>
         <div className="mt-2 grid grid-cols-2 gap-1.5 md:grid-cols-3 xl:grid-cols-6">
-          {visibleStages.map((stage) => <label key={stage.id} className="flex min-h-[58px] min-w-0 flex-col justify-between rounded-md bg-slate-50/80 px-2 py-1.5">
-            <span className="text-[10px] font-semibold leading-4 text-slate-500">{stage.name}</span>
-            <select aria-label={`${stage.name} status for ${project.name}`} value={stage.status} onChange={(event) => onUpdateStageStatus(project.id, stage, event.target.value as StageStatus)} className="mt-1 h-7 w-full rounded-md border border-slate-200 bg-white px-1.5 text-[10px] font-semibold text-slate-600 outline-none focus:border-[#69cbbb]">
-              {stageStatusOptions.map((option) => <option key={option}>{option}</option>)}
-            </select>
-          </label>)}
+          {visibleStages.map((stage) => <div key={stage.id} className="flex min-h-[58px] min-w-0 flex-col justify-between rounded-md bg-slate-50/80 px-2 py-1.5">
+            <p className="text-[10px] font-semibold leading-4 text-slate-500">{stage.name}</p>
+            <div className="mt-1"><StatusBadge status={stage.status} compact /></div>
+          </div>)}
         </div>
       </article>;
     })}
@@ -142,17 +139,6 @@ export default function Index() {
       : sprint));
   };
 
-  const updateStageStatus = (projectId: string, stage: Stage, status: StageStatus) => {
-    setProjects((current) => current.map((project) => {
-      if (project.id !== projectId) return project;
-      const index = project.stages.findIndex((item) => stage.isCustom ? item.id === stage.id : normalize(item.name) === normalize(stage.name));
-      const stages = index === -1
-        ? [...project.stages, { ...stage, status }]
-        : project.stages.map((item, itemIndex) => itemIndex === index ? { ...item, status } : item);
-      return { ...project, stages, lastUpdated: todayLabel() };
-    }));
-  };
-
   const createProject = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!targetSprint) return;
@@ -204,10 +190,10 @@ export default function Index() {
 
           {isExpanded && <div id={`sprint-content-${sprint.id}`} className="border-t border-slate-100 bg-slate-50/40 p-3 md:p-4">
             <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-              <div><h3 className="text-sm font-bold text-slate-800">Project execution overview</h3><p className="mt-0.5 text-[11px] text-slate-400">Overall project status and progress across the four execution categories.</p></div>
+              <div><h3 className="text-sm font-bold text-slate-800">Project execution overview</h3><p className="mt-0.5 text-[11px] text-slate-400">Overall project status and high-level stage statuses.</p></div>
               <button onClick={() => openProjectModal(sprint.id)} className="inline-flex items-center justify-center gap-2 self-start rounded-lg bg-[#10263d] px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#183752] sm:self-auto"><FolderPlus size={14} />Add project</button>
             </div>
-            <ProjectStatusGrid projects={sprintProjects} onRemoveProject={(projectId) => removeProjectFromSprint(sprint.id, projectId)} onUpdateStageStatus={updateStageStatus} />
+            <ProjectStatusGrid projects={sprintProjects} onRemoveProject={(projectId) => removeProjectFromSprint(sprint.id, projectId)} />
           </div>}
         </section>;
       })}
