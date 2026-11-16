@@ -16,6 +16,17 @@ const defaultStageNames = ["Exploratory", "TC Design", "Functionality Execution"
 const normalizeStageName = (name: string) => name.toLowerCase().replace(/[^a-z]/g, "");
 const todayLabel = () => new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 const inputClass = "form-input";
+const stageStatusTextColors: Record<StageStatus, string> = {
+  Completed: "text-[#20866f]",
+  Complete: "text-[#20866f]",
+  "In Progress": "text-[#4071ba]",
+  "Yet to Start": "text-slate-600",
+  "Not Yet Started": "text-slate-600",
+  Blocked: "text-[#8a6829]",
+  Failed: "text-[#c65e52]",
+  Deferred: "text-[#7257b5]",
+  "N/A": "text-slate-400",
+};
 
 const readNumber = (data: FormData, key: string) => {
   const value = String(data.get(key) ?? "").trim();
@@ -256,7 +267,7 @@ function ProjectDetails() {
             </div>
           </div>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{visibleStages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-3"><p className="mb-2 text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><select aria-label={`${stage.name} status`} value={stage.status} onChange={(event) => updateStageStatus(stage.id, stage.name, stage.isCustom, event.target.value as StageStatus)} className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-600 outline-none focus:border-[#69cbbb]">{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></div>)}</div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{visibleStages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-3"><p className="mb-2 text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><select aria-label={`${stage.name} status`} value={stage.status} onChange={(event) => updateStageStatus(stage.id, stage.name, stage.isCustom, event.target.value as StageStatus)} className={`h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-[11px] font-semibold outline-none focus:border-[#69cbbb] ${stageStatusTextColors[stage.status]}`}>{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></div>)}</div>
       </div>
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
