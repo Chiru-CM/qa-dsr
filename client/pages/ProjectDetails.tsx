@@ -118,6 +118,21 @@ function ProjectDetails() {
     });
   };
 
+  const addBugId = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const bugId = String(new FormData(form).get("bugId") ?? "").trim();
+    if (!bugId || reportProject.bugIds.some((id) => id.toLowerCase() === bugId.toLowerCase())) return;
+    updateProject((current) => ({ ...current, bugIds: [...current.bugIds, bugId], lastUpdated: todayLabel() }));
+    form.reset();
+  };
+
+  const saveHighLevelComments = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const comments = String(new FormData(event.currentTarget).get("highLevelComments") ?? "").trim();
+    updateProject((current) => ({ ...current, highLevelComments: comments, lastUpdated: todayLabel() }));
+  };
+
   const addCustomStage = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -201,7 +216,7 @@ function ProjectDetails() {
     <PageTitle eyebrow="Project DSR" title={reportProject.name} description={`${reportProject.owner} · Last updated ${reportProject.lastUpdated}`} action={<button onClick={() => openModal("project")} className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 shadow-sm transition hover:border-[#b9e7df] hover:text-[#218f82]"><Pencil size={14} />Edit project</button>} />
 
     <section className="mb-5 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]">
-      <SectionHeading title="High level status report" description="Sprint dates, test environment, and status across project stages." action={<button onClick={() => openModal("stage")} className="inline-flex items-center gap-1.5 rounded-lg bg-[#eaf8f5] px-3 py-2 text-xs font-bold text-[#218f82] hover:bg-[#d9f3ee]"><Plus size={14} />Add status item</button>} />
+      <SectionHeading title="High level status report" description="Sprint dates, test environment, status, bug IDs, and comments." action={<button onClick={() => openModal("stage")} className="inline-flex items-center gap-1.5 rounded-lg bg-[#eaf8f5] px-3 py-2 text-xs font-bold text-[#218f82] hover:bg-[#d9f3ee]"><Plus size={14} />Add status item</button>} />
       <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
         <div className="grid gap-3 sm:grid-cols-2">
           <SummaryValue label="Sprint dates" value={projectSprint ? `${projectSprint.startDate} – ${projectSprint.endDate}` : "Not set"} className="sm:col-span-2" />
@@ -215,7 +230,24 @@ function ProjectDetails() {
             </div>
           </div>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{visibleStages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-3"><p className="mb-2 text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><select aria-label={`${stage.name} status`} value={stage.status} onChange={(event) => updateStageStatus(stage.id, stage.name, stage.isCustom, event.target.value as StageStatus)} className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-600 outline-none focus:border-[#69cbbb]">{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></div>)}</div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{visibleStages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-3"><p className="mb-2 text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><select aria-label={`${stage.name} status`} value={stage.status} onChange={(event) => updateStageStatus(stage.id, stage.name, stage.isCustom, event.target.value as StageStatus)} className={`h-9 w-full rounded-md border px-2 text-[11px] font-semibold outline-none focus:border-[#69cbbb] ${stage.status === "Completed" ? "border-[#bce8d8] bg-[#e7f7f1] text-[#20866f]" : "border-slate-200 bg-white text-slate-600"}`}>{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></div>)}</div>
+      </div>
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+          <h3 className="text-xs font-bold text-slate-700">Bug IDs</h3>
+          <form onSubmit={addBugId} className="mt-3 flex gap-2">
+            <input name="bugId" aria-label="Bug ID" placeholder="Enter a bug ID" className={inputClass} required />
+            <button className="shrink-0 rounded-lg bg-[#eaf8f5] px-3 text-xs font-bold text-[#218f82] transition hover:bg-[#d9f3ee]">Add</button>
+          </form>
+          {reportProject.bugIds.length ? <ul className="mt-3 flex flex-wrap gap-2">{reportProject.bugIds.map((id) => <li key={id} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600">{id}</li>)}</ul> : <p className="mt-3 text-xs text-slate-400">No bug IDs added.</p>}
+        </div>
+        <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+          <h3 className="text-xs font-bold text-slate-700">Comments</h3>
+          <form onSubmit={saveHighLevelComments} className="mt-3 space-y-2">
+            <textarea name="highLevelComments" aria-label="High-level comments" defaultValue={reportProject.highLevelComments} rows={3} placeholder="Add a project status comment" className={`${inputClass} resize-y`} />
+            <div className="flex justify-end"><button className="rounded-lg bg-[#10263d] px-3 py-2 text-xs font-bold text-white">Save comment</button></div>
+          </form>
+        </div>
       </div>
     </section>
 
