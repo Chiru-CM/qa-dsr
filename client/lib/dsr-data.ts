@@ -228,7 +228,7 @@ export function normalizeProject(project: Project): NormalizedProject {
   return {
     ...project,
     report: { ...emptyProjectReport, ...project.report },
-    preparation: (project.preparation?.length ? project.preparation : createDefaultPreparationItems()).map((item) => ({ etaToUnblock: "", owner: "", comments: "", ...item })),
+    preparation: (project.preparation ?? createDefaultPreparationItems()).map((item) => ({ etaToUnblock: "", owner: "", comments: "", ...item })),
     execution,
     defects: project.defects ?? [],
     validatedDefects: project.validatedDefects ?? [],
