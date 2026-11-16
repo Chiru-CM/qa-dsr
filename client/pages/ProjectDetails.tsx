@@ -133,6 +133,10 @@ function ProjectDetails() {
     });
   };
 
+  const deleteCustomStatus = (stageId: string) => {
+    updateProject((current) => ({ ...current, stages: current.stages.filter((stage) => stage.id !== stageId), lastUpdated: todayLabel() }));
+  };
+
   const beginEditingBugIds = () => {
     setBugIdsText(reportProject.bugIds.join("\n"));
     setEditingBugIds(true);
@@ -258,7 +262,7 @@ function ProjectDetails() {
             </div>
           </div>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{visibleStages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-3"><p className="mb-2 text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><select aria-label={`${stage.name} status`} value={stage.status} onChange={(event) => updateStageStatus(stage.id, stage.name, stage.isCustom, event.target.value as StageStatus)} className={`h-9 w-full rounded-md border px-2 text-[11px] font-semibold outline-none focus:border-[#69cbbb] ${stageStatusColors[stage.status]}`}>{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></div>)}</div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{visibleStages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-3"><div className="mb-2 flex items-center justify-between gap-1"><p className="text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p>{stage.isCustom && <button type="button" onClick={() => deleteCustomStatus(stage.id)} aria-label={`Delete ${stage.name} status item`} className="rounded-md p-1 text-slate-400 transition hover:bg-[#fff0ed] hover:text-[#c65e52]"><Trash2 size={13} /></button>}</div><select aria-label={`${stage.name} status`} value={stage.status} onChange={(event) => updateStageStatus(stage.id, stage.name, stage.isCustom, event.target.value as StageStatus)} className={`h-9 w-full rounded-md border px-2 text-[11px] font-semibold outline-none focus:border-[#69cbbb] ${stageStatusColors[stage.status]}`}>{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></div>)}</div>
       </div>
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
