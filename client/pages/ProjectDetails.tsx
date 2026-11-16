@@ -257,7 +257,7 @@ function ProjectDetails() {
 
     <section className="mb-5 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]">
       <SectionHeading title="High level status report" description="Sprint dates, test environment, status, validated defects, and comments." action={<button onClick={() => openModal("stage")} className="inline-flex items-center gap-1.5 rounded-lg bg-[#eaf8f5] px-3 py-2 text-xs font-bold text-[#218f82] hover:bg-[#d9f3ee]"><Plus size={14} />Add status item</button>} />
-      <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
+      <div className="grid gap-5 lg:grid-cols-[0.65fr_1.35fr]">
         <div className="grid gap-3 sm:grid-cols-2">
           <SummaryValue label="Sprint dates" value={projectSprint ? `${projectSprint.startDate} – ${projectSprint.endDate}` : "Not set"} className="sm:col-span-2" />
           <div className="sm:col-span-2 rounded-lg border border-slate-100 bg-white p-3">
