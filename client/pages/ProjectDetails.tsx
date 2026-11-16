@@ -16,6 +16,7 @@ const defaultStageNames = ["Exploratory", "TC Design", "Functionality Execution"
 const normalizeStageName = (name: string) => name.toLowerCase().replace(/[^a-z]/g, "");
 const todayLabel = () => new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 const inputClass = "form-input";
+const stageStatusOptions: StageStatus[] = [...statusOptions, "TBD"];
 const stageStatusColors: Record<StageStatus, string> = {
   Completed: "bg-[#e7f7f1] text-[#20866f]",
   Complete: "bg-[#e7f7f1] text-[#20866f]",
@@ -26,6 +27,7 @@ const stageStatusColors: Record<StageStatus, string> = {
   Failed: "bg-[#fff0ed] text-[#c65e52]",
   Deferred: "bg-[#f5f3ff] text-[#7257b5]",
   "N/A": "bg-slate-50 text-slate-400",
+  TBD: "bg-slate-50 text-slate-600",
 };
 
 const readNumber = (data: FormData, key: string) => {
@@ -267,7 +269,7 @@ function ProjectDetails() {
             </div>
           </div>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{visibleStages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-3"><p className="mb-2 text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><select aria-label={`${stage.name} status`} value={stage.status} onChange={(event) => updateStageStatus(stage.id, stage.name, stage.isCustom, event.target.value as StageStatus)} className={`h-9 w-full rounded-md border border-slate-200 px-2 text-[11px] font-semibold outline-none focus:border-[#69cbbb] ${stageStatusColors[stage.status]}`}>{statusOptions.map((option) => <option key={option} className="bg-white text-slate-700">{option}</option>)}</select></div>)}</div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{visibleStages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-3"><p className="mb-2 text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><select aria-label={`${stage.name} status`} value={stage.status} onChange={(event) => updateStageStatus(stage.id, stage.name, stage.isCustom, event.target.value as StageStatus)} className={`h-9 w-full rounded-md border border-slate-200 px-2 text-[11px] font-semibold outline-none focus:border-[#69cbbb] ${stageStatusColors[stage.status]}`}>{stageStatusOptions.map((option) => <option key={option} className="bg-white text-slate-700">{option}</option>)}</select></div>)}</div>
       </div>
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
@@ -316,7 +318,7 @@ function ProjectDetails() {
       <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><SectionHeading title="Notes" description="High-level context for the current DSR." /><div className="rounded-xl bg-[#f7f9fc] p-4"><FileText size={17} className="text-[#37b9a5]" /><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">{reportProject.notes || "No notes added yet."}</p></div><button onClick={() => openModal("project")} className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-[#218f82] hover:underline"><Pencil size={13} />Edit project notes</button></section>
     </div>
 
-    <Modal open={modal === "stage"} onClose={closeModal} title="Add status item" description="Add an extra stage to this project's high-level status report."><form onSubmit={addCustomStage} className="space-y-4"><Field label="Stage name"><input name="name" required placeholder="e.g. Security validation" className={inputClass} /></Field><Field label="Initial status"><select name="status" defaultValue="Yet to Start" className={inputClass}>{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>{stageError && <p role="alert" className="text-xs font-medium text-[#c65e52]">{stageError}</p>}<FormFooter onCancel={closeModal} label="Add item" /></form></Modal>
+    <Modal open={modal === "stage"} onClose={closeModal} title="Add status item" description="Add an extra stage to this project's high-level status report."><form onSubmit={addCustomStage} className="space-y-4"><Field label="Stage name"><input name="name" required placeholder="e.g. Security validation" className={inputClass} /></Field><Field label="Initial status"><select name="status" defaultValue="Yet to Start" className={inputClass}>{stageStatusOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>{stageError && <p role="alert" className="text-xs font-medium text-[#c65e52]">{stageError}</p>}<FormFooter onCancel={closeModal} label="Add item" /></form></Modal>
 
     <Modal open={modal === "project"} onClose={closeModal} title="Edit project report" description="Update the report header and project context." wide><form onSubmit={saveProject} className="grid gap-4 sm:grid-cols-2"><Field label="Project name"><input name="name" defaultValue={reportProject.name} required className={inputClass} /></Field><p className="self-center text-xs text-slate-500 sm:col-span-2">Sprint dates are managed in the sprint configuration.</p><Field label="Firmware version"><input name="firmwareVersion" defaultValue={reportProject.report.firmwareVersion} className={inputClass} /></Field><Field label="Solution version"><input name="solutionVersion" defaultValue={reportProject.report.solutionVersion} className={inputClass} /></Field><Field label="Targeted devices" className="sm:col-span-2"><textarea name="targetedDevices" defaultValue={reportProject.report.targetedDevices} rows={2} className={`${inputClass} resize-y`} /></Field><div className="sm:col-span-2 rounded-lg border border-slate-100 p-3"><h3 className="text-xs font-bold text-slate-700">Status items</h3>{visibleStages.length ? <div className="mt-2 divide-y divide-slate-100">{visibleStages.map((stage) => <div key={stage.id} className="flex items-center justify-between gap-3 py-2"><span className="text-xs font-medium text-slate-600">{stage.name}</span><button type="button" onClick={() => deleteStatusItem(stage)} aria-label={`Delete ${stage.name} status item`} className="rounded-md px-2 py-1 text-xs font-semibold text-[#c65e52] hover:bg-[#fff0ed]">Delete</button></div>)}</div> : <p className="mt-2 text-xs text-slate-400">No status items.</p>}</div><FormFooter onCancel={closeModal} label="Save changes" /></form></Modal>
 

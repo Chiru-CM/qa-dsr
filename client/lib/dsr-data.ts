@@ -20,7 +20,8 @@ export type StageStatus =
   | ProjectStatus
   | "Complete"
   | "Not Yet Started"
-  | "N/A";
+  | "N/A"
+  | "TBD";
 export type RecordStatus = "Open" | "Blocked" | "Monitoring" | "Resolved" | "Deferred";
 
 export interface Stage {
