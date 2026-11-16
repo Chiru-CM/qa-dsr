@@ -88,7 +88,7 @@ function ProjectDetails() {
   const editingPreparation = reportProject.preparation.find((item) => item.id === editingId);
   const editingDefect = reportProject.defects.find((item) => item.id === editingId);
   const visibleStages = [
-    ...defaultStageNames.map((name) => {
+    ...defaultStageNames.filter((name) => !reportProject.hiddenStages.includes(normalizeStageName(name))).map((name) => {
       const stage = reportProject.stages.find((item) => normalizeStageName(item.name) === normalizeStageName(name));
       return { id: stage?.id ?? `default-${normalizeStageName(name)}`, name, status: stage?.status ?? "N/A" as StageStatus, isCustom: false };
     }),
@@ -133,8 +133,13 @@ function ProjectDetails() {
     });
   };
 
-  const deleteCustomStatus = (stageId: string) => {
-    updateProject((current) => ({ ...current, stages: current.stages.filter((stage) => stage.id !== stageId), lastUpdated: todayLabel() }));
+  const deleteStatusItem = (stage: (typeof visibleStages)[number]) => {
+    updateProject((current) => ({
+      ...current,
+      stages: current.stages.filter((item) => item.id !== stage.id),
+      hiddenStages: stage.isCustom ? current.hiddenStages : [...new Set([...current.hiddenStages, normalizeStageName(stage.name)])],
+      lastUpdated: todayLabel(),
+    }));
   };
 
   const beginEditingBugIds = () => {
@@ -262,7 +267,7 @@ function ProjectDetails() {
             </div>
           </div>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{visibleStages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-3"><div className="mb-2 flex items-center justify-between gap-1"><p className="text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p>{stage.isCustom && <button type="button" onClick={() => deleteCustomStatus(stage.id)} aria-label={`Delete ${stage.name} status item`} className="rounded-md p-1 text-slate-400 transition hover:bg-[#fff0ed] hover:text-[#c65e52]"><Trash2 size={13} /></button>}</div><select aria-label={`${stage.name} status`} value={stage.status} onChange={(event) => updateStageStatus(stage.id, stage.name, stage.isCustom, event.target.value as StageStatus)} className={`h-9 w-full rounded-md border px-2 text-[11px] font-semibold outline-none focus:border-[#69cbbb] ${stageStatusColors[stage.status]}`}>{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></div>)}</div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{visibleStages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-3"><p className="mb-2 text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><select aria-label={`${stage.name} status`} value={stage.status} onChange={(event) => updateStageStatus(stage.id, stage.name, stage.isCustom, event.target.value as StageStatus)} className={`h-9 w-full rounded-md border px-2 text-[11px] font-semibold outline-none focus:border-[#69cbbb] ${stageStatusColors[stage.status]}`}>{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></div>)}</div>
       </div>
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
@@ -313,7 +318,7 @@ function ProjectDetails() {
 
     <Modal open={modal === "stage"} onClose={closeModal} title="Add status item" description="Add an extra stage to this project's high-level status report."><form onSubmit={addCustomStage} className="space-y-4"><Field label="Stage name"><input name="name" required placeholder="e.g. Security validation" className={inputClass} /></Field><Field label="Initial status"><select name="status" defaultValue="Yet to Start" className={inputClass}>{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>{stageError && <p role="alert" className="text-xs font-medium text-[#c65e52]">{stageError}</p>}<FormFooter onCancel={closeModal} label="Add item" /></form></Modal>
 
-    <Modal open={modal === "project"} onClose={closeModal} title="Edit project report" description="Update the report header and project context." wide><form onSubmit={saveProject} className="grid gap-4 sm:grid-cols-2"><Field label="Project name"><input name="name" defaultValue={reportProject.name} required className={inputClass} /></Field><p className="self-center text-xs text-slate-500 sm:col-span-2">Sprint dates are managed in the sprint configuration.</p><Field label="Firmware version"><input name="firmwareVersion" defaultValue={reportProject.report.firmwareVersion} className={inputClass} /></Field><Field label="Solution version"><input name="solutionVersion" defaultValue={reportProject.report.solutionVersion} className={inputClass} /></Field><Field label="Targeted devices" className="sm:col-span-2"><textarea name="targetedDevices" defaultValue={reportProject.report.targetedDevices} rows={2} className={`${inputClass} resize-y`} /></Field><FormFooter onCancel={closeModal} label="Save changes" /></form></Modal>
+    <Modal open={modal === "project"} onClose={closeModal} title="Edit project report" description="Update the report header and project context." wide><form onSubmit={saveProject} className="grid gap-4 sm:grid-cols-2"><Field label="Project name"><input name="name" defaultValue={reportProject.name} required className={inputClass} /></Field><p className="self-center text-xs text-slate-500 sm:col-span-2">Sprint dates are managed in the sprint configuration.</p><Field label="Firmware version"><input name="firmwareVersion" defaultValue={reportProject.report.firmwareVersion} className={inputClass} /></Field><Field label="Solution version"><input name="solutionVersion" defaultValue={reportProject.report.solutionVersion} className={inputClass} /></Field><Field label="Targeted devices" className="sm:col-span-2"><textarea name="targetedDevices" defaultValue={reportProject.report.targetedDevices} rows={2} className={`${inputClass} resize-y`} /></Field><div className="sm:col-span-2 rounded-lg border border-slate-100 p-3"><h3 className="text-xs font-bold text-slate-700">Status items</h3>{visibleStages.length ? <div className="mt-2 divide-y divide-slate-100">{visibleStages.map((stage) => <div key={stage.id} className="flex items-center justify-between gap-3 py-2"><span className="text-xs font-medium text-slate-600">{stage.name}</span><button type="button" onClick={() => deleteStatusItem(stage)} aria-label={`Delete ${stage.name} status item`} className="rounded-md px-2 py-1 text-xs font-semibold text-[#c65e52] hover:bg-[#fff0ed]">Delete</button></div>)}</div> : <p className="mt-2 text-xs text-slate-400">No status items.</p>}</div><FormFooter onCancel={closeModal} label="Save changes" /></form></Modal>
 
     <Modal open={modal === "preparation" || modal === "execution" || modal === "risk" || modal === "blocker" || modal === "defect"} onClose={closeModal} title={modalTitle} description="Keep the project report current with the latest execution details." wide>
       {modal === "preparation" && <form onSubmit={saveRecord} className="grid gap-4 sm:grid-cols-2"><Field label="Preparation item"><input name="name" defaultValue={editingPreparation?.name ?? ""} required className={inputClass} /></Field><Field label="Status"><select name="status" defaultValue={editingPreparation?.status ?? "Yet to Start"} className={inputClass}>{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></Field><Field label="ETA for completion"><input name="eta" defaultValue={editingPreparation?.eta ?? ""} placeholder="e.g. 30/10/2026 or TBD" className={inputClass} /></Field><Field label="Blocked reason"><input name="blockedReason" defaultValue={editingPreparation?.blockedReason ?? ""} className={inputClass} /></Field><Field label="ETA to unblock"><input name="etaToUnblock" defaultValue={editingPreparation?.etaToUnblock ?? ""} placeholder="e.g. 30/10/2026 or TBD" className={inputClass} /></Field><Field label="Owner"><input name="owner" defaultValue={editingPreparation?.owner ?? ""} className={inputClass} /></Field><Field label="Comments" className="sm:col-span-2"><textarea name="comments" defaultValue={editingPreparation?.comments ?? ""} rows={3} className={`${inputClass} resize-y`} /></Field><FormFooter onCancel={closeModal} label={editingPreparation ? "Save item" : "Add item"} /></form>}

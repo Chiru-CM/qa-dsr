@@ -81,7 +81,7 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: {
   const hasExecutionMetrics = report.execution.some((item) => [item.totalTestCases, item.testCasesPassed, item.blocked, item.toDo, item.failed].some((value) => value !== null));
   const chartDefectSummary = defectSummary.map(({ status: name, counts }) => ({ status: name, P1: counts[0], P2: counts[1], P3: counts[2] }));
   const hasDefects = report.defects.length > 0;
-  const reportStages = [...reportStageNames, ...project.stages.filter((stage) => stage.isCustom).map((stage) => stage.name)];
+  const reportStages = [...reportStageNames.filter((name) => !report.hiddenStages.includes(normalizeStageName(name))), ...project.stages.filter((stage) => stage.isCustom).map((stage) => stage.name)];
 
   return (
     <article className={`sprint-report-card overflow-hidden rounded-2xl border border-slate-200/80 bg-white ${statusShadows[status]}`}>

@@ -111,6 +111,7 @@ export interface Project {
   owner: string;
   lastUpdated: string;
   stages: Stage[];
+  hiddenStages?: string[];
   blockers: Blocker[];
   execution: ExecutionItem[];
   risks: Risk[];
@@ -143,7 +144,7 @@ export interface DailySnapshot {
 }
 
 export type NormalizedExecutionItem = ExecutionItem & Required<ExecutionMetrics>;
-export type NormalizedProject = Omit<Project, "report" | "preparation" | "execution" | "defects" | "validatedDefects" | "bugIds" | "highLevelComments" | "additionalNotes"> & {
+export type NormalizedProject = Omit<Project, "report" | "preparation" | "execution" | "defects" | "validatedDefects" | "bugIds" | "highLevelComments" | "hiddenStages" | "additionalNotes"> & {
   report: ProjectReport;
   preparation: PreparationItem[];
   execution: NormalizedExecutionItem[];
@@ -151,6 +152,7 @@ export type NormalizedProject = Omit<Project, "report" | "preparation" | "execut
   validatedDefects: string[];
   bugIds: string[];
   highLevelComments: string;
+  hiddenStages: string[];
   additionalNotes: string;
 };
 
@@ -231,6 +233,7 @@ export function normalizeProject(project: Project): NormalizedProject {
     validatedDefects: project.validatedDefects ?? [],
     bugIds: project.bugIds ?? [],
     highLevelComments: project.highLevelComments ?? "",
+    hiddenStages: project.hiddenStages ?? [],
     additionalNotes: project.additionalNotes ?? "",
   };
 }
