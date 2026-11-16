@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAx
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
 import { Modal } from "@/components/dsr/Modal";
 import { EmptyState, PageTitle, ProgressBar, SectionHeading, StatusBadge } from "@/components/dsr/DsrPrimitives";
-import { executionReportAreas, normalizeProject, statusOptions, type Blocker, type Defect, type DefectSeverity, type DefectStatus, type ExecutionItem, type NormalizedProject, type PreparationItem, type Project, type ProjectStatus, type RecordStatus, type Risk, type StageStatus } from "@/lib/dsr-data";
+import { executionReportAreas, normalizeProject, statusOptions, type Blocker, type Defect, type DefectSeverity, type DefectStatus, type ExecutionItem, type NormalizedProject, type PreparationItem, type Project, type RecordStatus, type Risk, type StageStatus } from "@/lib/dsr-data";
 
 type ModalType = "blocker" | "execution" | "risk" | "project" | "stage" | "preparation" | "defect" | "validated" | null;
 const recordStatuses: RecordStatus[] = ["Open", "Blocked", "Monitoring", "Resolved", "Deferred"];
@@ -16,6 +16,19 @@ const defaultStageNames = ["Exploratory", "TC Design", "Functionality Execution"
 const normalizeStageName = (name: string) => name.toLowerCase().replace(/[^a-z]/g, "");
 const todayLabel = () => new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 const inputClass = "form-input";
+const stageStatusOptions: StageStatus[] = [...statusOptions, "TBD"];
+const stageStatusColors: Record<StageStatus, string> = {
+  Completed: "bg-[#e7f7f1] text-[#20866f]",
+  Complete: "bg-[#e7f7f1] text-[#20866f]",
+  "In Progress": "bg-[#eaf2ff] text-[#4071ba]",
+  "Yet to Start": "bg-slate-50 text-slate-600",
+  "Not Yet Started": "bg-slate-50 text-slate-600",
+  Blocked: "bg-[#fffaf0] text-[#8a6829]",
+  Failed: "bg-[#fff0ed] text-[#c65e52]",
+  Deferred: "bg-[#f5f3ff] text-[#7257b5]",
+  "N/A": "bg-slate-50 text-slate-400",
+  TBD: "bg-slate-50 text-slate-600",
+};
 
 const readNumber = (data: FormData, key: string) => {
   const value = String(data.get(key) ?? "").trim();
@@ -56,6 +69,10 @@ function ProjectDetails() {
   const [modal, setModal] = useState<ModalType>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [stageError, setStageError] = useState("");
+  const [editingBugIds, setEditingBugIds] = useState(false);
+  const [bugIdsText, setBugIdsText] = useState("");
+  const [editingHighLevelComments, setEditingHighLevelComments] = useState(false);
+  const [highLevelCommentsText, setHighLevelCommentsText] = useState("");
   const project = projects.find((item) => item.id === projectId);
   const projectSprint = sprints.find((sprint) => sprint.id === activeSprintId && sprint.projectIds.includes(projectId ?? "")) ?? sprints.find((sprint) => sprint.projectIds.includes(projectId ?? ""));
 
@@ -73,7 +90,7 @@ function ProjectDetails() {
   const editingPreparation = reportProject.preparation.find((item) => item.id === editingId);
   const editingDefect = reportProject.defects.find((item) => item.id === editingId);
   const visibleStages = [
-    ...defaultStageNames.map((name) => {
+    ...defaultStageNames.filter((name) => !reportProject.hiddenStages.includes(normalizeStageName(name))).map((name) => {
       const stage = reportProject.stages.find((item) => normalizeStageName(item.name) === normalizeStageName(name));
       return { id: stage?.id ?? `default-${normalizeStageName(name)}`, name, status: stage?.status ?? "N/A" as StageStatus, isCustom: false };
     }),
@@ -95,14 +112,10 @@ function ProjectDetails() {
     updateProject((current) => ({
       ...current,
       name: String(data.get("name") || current.name).trim(),
-      owner: String(data.get("owner") || "").trim(),
-      status: String(data.get("status")) as ProjectStatus,
-      notes: String(data.get("notes") ?? current.notes),
-      additionalNotes: String(data.get("additionalNotes") ?? ""),
       report: {
+        ...current.report,
         sprintStartDate: projectSprint?.startDate ?? "",
         sprintEndDate: projectSprint?.endDate ?? "",
-        testEnvironment: String(data.get("testEnvironment") ?? "").trim(),
         firmwareVersion: String(data.get("firmwareVersion") ?? "").trim(),
         solutionVersion: String(data.get("solutionVersion") ?? "").trim(),
         targetedDevices: String(data.get("targetedDevices") ?? "").trim(),
@@ -120,6 +133,43 @@ function ProjectDetails() {
         : current.stages.map((stage, itemIndex) => itemIndex === index ? { ...stage, status } : stage);
       return { ...current, stages, lastUpdated: todayLabel() };
     });
+  };
+
+  const deleteStatusItem = (stage: (typeof visibleStages)[number]) => {
+    updateProject((current) => ({
+      ...current,
+      stages: current.stages.filter((item) => item.id !== stage.id),
+      hiddenStages: stage.isCustom ? current.hiddenStages : [...new Set([...current.hiddenStages, normalizeStageName(stage.name)])],
+      lastUpdated: todayLabel(),
+    }));
+  };
+
+  const beginEditingBugIds = () => {
+    setBugIdsText(reportProject.bugIds.join("\n"));
+    setEditingBugIds(true);
+  };
+
+  const saveBugIds = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const text = String(new FormData(event.currentTarget).get("bugIds") ?? "");
+    const values = text.split(/[\n,]+/).map((id) => id.trim()).filter(Boolean);
+    const bugIds = values.filter((id, index) => values.findIndex((value) => value.toLowerCase() === id.toLowerCase()) === index);
+    updateProject((current) => ({ ...current, bugIds, lastUpdated: todayLabel() }));
+    setBugIdsText(bugIds.join("\n"));
+    setEditingBugIds(false);
+  };
+
+  const beginEditingHighLevelComments = () => {
+    setHighLevelCommentsText(reportProject.highLevelComments);
+    setEditingHighLevelComments(true);
+  };
+
+  const saveHighLevelComments = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const comments = String(new FormData(event.currentTarget).get("highLevelComments") ?? "").trim();
+    updateProject((current) => ({ ...current, highLevelComments: comments, lastUpdated: todayLabel() }));
+    setHighLevelCommentsText(comments);
+    setEditingHighLevelComments(false);
   };
 
   const addCustomStage = (event: FormEvent<HTMLFormElement>) => {
@@ -205,16 +255,37 @@ function ProjectDetails() {
     <PageTitle eyebrow="Project DSR" title={reportProject.name} description={`${reportProject.owner} · Last updated ${reportProject.lastUpdated}`} action={<button onClick={() => openModal("project")} className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 shadow-sm transition hover:border-[#b9e7df] hover:text-[#218f82]"><Pencil size={14} />Edit project</button>} />
 
     <section className="mb-5 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]">
-      <SectionHeading title="High level status report" description="Sprint dates, test environment, and status across project stages." action={<button onClick={() => openModal("stage")} className="inline-flex items-center gap-1.5 rounded-lg bg-[#eaf8f5] px-3 py-2 text-xs font-bold text-[#218f82] hover:bg-[#d9f3ee]"><Plus size={14} />Add status item</button>} />
+      <SectionHeading title="High level status report" description="Sprint dates, test environment, status, validated defects, and comments." action={<button onClick={() => openModal("stage")} className="inline-flex items-center gap-1.5 rounded-lg bg-[#eaf8f5] px-3 py-2 text-xs font-bold text-[#218f82] hover:bg-[#d9f3ee]"><Plus size={14} />Add status item</button>} />
       <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
         <div className="grid gap-3 sm:grid-cols-2">
           <SummaryValue label="Sprint dates" value={projectSprint ? `${projectSprint.startDate} – ${projectSprint.endDate}` : "Not set"} className="sm:col-span-2" />
-          <SummaryValue label="Test environment" value={reportProject.report.testEnvironment || "Not set"} />
-          <SummaryValue label="Firmware version" value={reportProject.report.firmwareVersion || "Not set"} />
-          <SummaryValue label="Solution version" value={reportProject.report.solutionVersion || "Not set"} />
-          <SummaryValue label="Targeted devices" value={reportProject.report.targetedDevices || "Not set"} />
+          <div className="sm:col-span-2 rounded-lg border border-slate-100 bg-white p-3">
+            <p className="text-xs font-bold text-slate-700">Test environment</p>
+            <p className="mt-1 text-xs font-semibold text-slate-700">{reportProject.report.testEnvironment || "Not set"}</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <SummaryValue label="Firmware version" value={reportProject.report.firmwareVersion || "Not set"} />
+              <SummaryValue label="Solution version" value={reportProject.report.solutionVersion || "Not set"} />
+              <SummaryValue label="Targeted devices" value={reportProject.report.targetedDevices || "Not set"} />
+            </div>
+          </div>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{visibleStages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-3"><p className="mb-2 text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><select aria-label={`${stage.name} status`} value={stage.status} onChange={(event) => updateStageStatus(stage.id, stage.name, stage.isCustom, event.target.value as StageStatus)} className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-600 outline-none focus:border-[#69cbbb]">{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></div>)}</div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{visibleStages.map((stage) => <div key={stage.id} className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/60 p-3"><p className="mb-2 text-[11px] font-bold leading-4 text-slate-700">{stage.name}</p><select aria-label={`${stage.name} status`} value={stage.status} onChange={(event) => updateStageStatus(stage.id, stage.name, stage.isCustom, event.target.value as StageStatus)} className={`h-9 w-full rounded-md border border-slate-200 px-2 text-[11px] font-semibold outline-none focus:border-[#69cbbb] ${stageStatusColors[stage.status]}`}>{stageStatusOptions.map((option) => <option key={option} className="bg-white text-slate-700">{option}</option>)}</select></div>)}</div>
+      </div>
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+          <div className="flex items-center justify-between gap-2"><h3 className="text-xs font-bold text-slate-700">Defect validated</h3>{!editingBugIds && <button type="button" onClick={beginEditingBugIds} className="text-xs font-bold text-[#218f82] hover:underline">Edit</button>}</div>
+          {editingBugIds ? <form onSubmit={saveBugIds} className="mt-3 space-y-2">
+            <textarea name="bugIds" aria-label="Validated defect IDs" value={bugIdsText} onChange={(event) => setBugIdsText(event.target.value)} rows={4} placeholder="Enter defect IDs, separated by commas or new lines" className={`${inputClass} resize-y`} />
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingBugIds(false)} className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100">Cancel</button><button className="rounded-lg bg-[#10263d] px-3 py-2 text-xs font-bold text-white">Save</button></div>
+          </form> : <p className="mt-3 whitespace-pre-wrap text-xs text-slate-600">{reportProject.bugIds.length ? reportProject.bugIds.join(", ") : "No defects validated."}</p>}
+        </div>
+        <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+          <div className="flex items-center justify-between gap-2"><h3 className="text-xs font-bold text-slate-700">Comments</h3>{!editingHighLevelComments && <button type="button" onClick={beginEditingHighLevelComments} className="text-xs font-bold text-[#218f82] hover:underline">Edit</button>}</div>
+          {editingHighLevelComments ? <form onSubmit={saveHighLevelComments} className="mt-3 space-y-2">
+            <textarea name="highLevelComments" aria-label="High-level comments" value={highLevelCommentsText} onChange={(event) => setHighLevelCommentsText(event.target.value)} rows={4} placeholder="Add a project status comment" className={`${inputClass} resize-y`} />
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingHighLevelComments(false)} className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100">Cancel</button><button className="rounded-lg bg-[#10263d] px-3 py-2 text-xs font-bold text-white">Save</button></div>
+          </form> : <p className="mt-3 whitespace-pre-wrap text-xs text-slate-600">{reportProject.highLevelComments || "No comments added."}</p>}
+        </div>
       </div>
     </section>
 
@@ -247,9 +318,9 @@ function ProjectDetails() {
       <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><SectionHeading title="Notes" description="High-level context for the current DSR." /><div className="rounded-xl bg-[#f7f9fc] p-4"><FileText size={17} className="text-[#37b9a5]" /><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">{reportProject.notes || "No notes added yet."}</p></div><button onClick={() => openModal("project")} className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-[#218f82] hover:underline"><Pencil size={13} />Edit project notes</button></section>
     </div>
 
-    <Modal open={modal === "stage"} onClose={closeModal} title="Add status item" description="Add an extra stage to this project's high-level status report."><form onSubmit={addCustomStage} className="space-y-4"><Field label="Stage name"><input name="name" required placeholder="e.g. Security validation" className={inputClass} /></Field><Field label="Initial status"><select name="status" defaultValue="Yet to Start" className={inputClass}>{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>{stageError && <p role="alert" className="text-xs font-medium text-[#c65e52]">{stageError}</p>}<FormFooter onCancel={closeModal} label="Add item" /></form></Modal>
+    <Modal open={modal === "stage"} onClose={closeModal} title="Add status item" description="Add an extra stage to this project's high-level status report."><form onSubmit={addCustomStage} className="space-y-4"><Field label="Stage name"><input name="name" required placeholder="e.g. Security validation" className={inputClass} /></Field><Field label="Initial status"><select name="status" defaultValue="Yet to Start" className={inputClass}>{stageStatusOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>{stageError && <p role="alert" className="text-xs font-medium text-[#c65e52]">{stageError}</p>}<FormFooter onCancel={closeModal} label="Add item" /></form></Modal>
 
-    <Modal open={modal === "project"} onClose={closeModal} title="Edit project report" description="Update the report header and project context." wide><form onSubmit={saveProject} className="grid gap-4 sm:grid-cols-2"><Field label="Project name"><input name="name" defaultValue={reportProject.name} required className={inputClass} /></Field><Field label="Owner"><input name="owner" defaultValue={reportProject.owner} className={inputClass} /></Field><Field label="Overall status"><select name="status" defaultValue={reportProject.status} className={inputClass}>{statusOptions.filter((value) => !["N/A", "Not Yet Started", "Complete"].includes(value)).map((option) => <option key={option}>{option}</option>)}</select></Field><Field label="Test environment"><input name="testEnvironment" defaultValue={reportProject.report.testEnvironment} className={inputClass} /></Field><p className="self-center text-xs text-slate-500 sm:col-span-2">Sprint dates are managed in the sprint configuration.</p><Field label="Firmware version"><input name="firmwareVersion" defaultValue={reportProject.report.firmwareVersion} className={inputClass} /></Field><Field label="Solution version"><input name="solutionVersion" defaultValue={reportProject.report.solutionVersion} className={inputClass} /></Field><Field label="Targeted devices" className="sm:col-span-2"><textarea name="targetedDevices" defaultValue={reportProject.report.targetedDevices} rows={2} className={`${inputClass} resize-y`} /></Field><Field label="Project notes" className="sm:col-span-2"><textarea name="notes" defaultValue={reportProject.notes} rows={3} className={`${inputClass} resize-y`} /></Field><Field label="Additional report notes" className="sm:col-span-2"><textarea name="additionalNotes" defaultValue={reportProject.additionalNotes} rows={3} className={`${inputClass} resize-y`} /></Field><FormFooter onCancel={closeModal} label="Save changes" /></form></Modal>
+    <Modal open={modal === "project"} onClose={closeModal} title="Edit project report" description="Update the report header and project context." wide><form onSubmit={saveProject} className="grid gap-4 sm:grid-cols-2"><Field label="Project name"><input name="name" defaultValue={reportProject.name} required className={inputClass} /></Field><p className="self-center text-xs text-slate-500 sm:col-span-2">Sprint dates are managed in the sprint configuration.</p><Field label="Firmware version"><input name="firmwareVersion" defaultValue={reportProject.report.firmwareVersion} className={inputClass} /></Field><Field label="Solution version"><input name="solutionVersion" defaultValue={reportProject.report.solutionVersion} className={inputClass} /></Field><Field label="Targeted devices" className="sm:col-span-2"><textarea name="targetedDevices" defaultValue={reportProject.report.targetedDevices} rows={2} className={`${inputClass} resize-y`} /></Field><div className="sm:col-span-2 rounded-lg border border-slate-100 p-3"><h3 className="text-xs font-bold text-slate-700">Status items</h3>{visibleStages.length ? <div className="mt-2 divide-y divide-slate-100">{visibleStages.map((stage) => <div key={stage.id} className="flex items-center justify-between gap-3 py-2"><span className="text-xs font-medium text-slate-600">{stage.name}</span><button type="button" onClick={() => deleteStatusItem(stage)} aria-label={`Delete ${stage.name} status item`} className="rounded-md px-2 py-1 text-xs font-semibold text-[#c65e52] hover:bg-[#fff0ed]">Delete</button></div>)}</div> : <p className="mt-2 text-xs text-slate-400">No status items.</p>}</div><FormFooter onCancel={closeModal} label="Save changes" /></form></Modal>
 
     <Modal open={modal === "preparation" || modal === "execution" || modal === "risk" || modal === "blocker" || modal === "defect"} onClose={closeModal} title={modalTitle} description="Keep the project report current with the latest execution details." wide>
       {modal === "preparation" && <form onSubmit={saveRecord} className="grid gap-4 sm:grid-cols-2"><Field label="Preparation item"><input name="name" defaultValue={editingPreparation?.name ?? ""} required className={inputClass} /></Field><Field label="Status"><select name="status" defaultValue={editingPreparation?.status ?? "Yet to Start"} className={inputClass}>{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></Field><Field label="ETA for completion"><input name="eta" defaultValue={editingPreparation?.eta ?? ""} placeholder="e.g. 30/10/2026 or TBD" className={inputClass} /></Field><Field label="Blocked reason"><input name="blockedReason" defaultValue={editingPreparation?.blockedReason ?? ""} className={inputClass} /></Field><Field label="ETA to unblock"><input name="etaToUnblock" defaultValue={editingPreparation?.etaToUnblock ?? ""} placeholder="e.g. 30/10/2026 or TBD" className={inputClass} /></Field><Field label="Owner"><input name="owner" defaultValue={editingPreparation?.owner ?? ""} className={inputClass} /></Field><Field label="Comments" className="sm:col-span-2"><textarea name="comments" defaultValue={editingPreparation?.comments ?? ""} rows={3} className={`${inputClass} resize-y`} /></Field><FormFooter onCancel={closeModal} label={editingPreparation ? "Save item" : "Add item"} /></form>}
