@@ -293,7 +293,8 @@ function ProjectDetails() {
         <table className="w-full min-w-[2200px] text-left">
           <thead>
             <tr className="border-b border-slate-100 bg-[#fff8e8] text-[9px] font-bold uppercase tracking-[0.08em] text-slate-500">
-              <th className="sticky left-0 z-20 border-r border-slate-100 bg-[#fff8e8] px-3 py-3">Total No. Test cases</th>
+              <th className="sticky left-0 z-20 border-r border-slate-100 bg-[#fff8e8] px-3 py-3">Execution area</th>
+              <th className="px-3 py-3">Total No. Test cases</th>
               <th className="px-3 py-3">Test cases Executed</th>
               <th className="px-3 py-3">% of Completion</th>
               <th className="px-3 py-3">No. of TC's Pass</th>
@@ -315,7 +316,8 @@ function ProjectDetails() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {reportProject.execution.map((item) => <tr key={item.id} className="align-top text-[11px] text-slate-600">
-              <td className="sticky left-0 z-10 border-r border-slate-100 bg-white px-3 py-3 font-bold text-slate-700"><span>{item.totalTestCases ?? "—"}</span><span className="mt-1 block text-[10px] font-medium text-slate-400">{item.area}</span></td>
+              <td className="sticky left-0 z-10 border-r border-slate-100 bg-white px-3 py-3 font-bold text-slate-700">{item.area}</td>
+              <td className="px-3 py-3">{item.totalTestCases ?? "—"}</td>
               <td className="px-3 py-3">{item.testCasesExecuted ?? "—"}</td>
               <td className="px-3 py-3">{displayPercent(executionCompletion(item))}</td>
               <td className="px-3 py-3">{item.testCasesPassed ?? "—"}</td>
