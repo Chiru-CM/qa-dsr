@@ -289,7 +289,54 @@ function ProjectDetails() {
 
     <section className="mb-5 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]">
       <SectionHeading title="Test execution summary" description="Track case counts, outcomes, completion, ownership, and unblock progress." action={<button onClick={() => openModal("execution")} className="inline-flex items-center gap-1.5 rounded-lg bg-[#eaf8f5] px-3 py-2 text-xs font-bold text-[#218f82] hover:bg-[#d9f3ee]"><Plus size={14} />Add execution item</button>} />
-      <div className="overflow-x-auto"><table className="w-full min-w-[2200px] text-left"><thead><tr className="border-b border-slate-100 bg-[#fff8e8] text-[9px] font-bold uppercase tracking-[0.08em] text-slate-500">{["Execution area", "Total No. Test cases", "Test cases Executed", "% of Completion", "No. of TC's Pass", "Pass %", "Blocked", "Blocked Reason", "Block %", "Progress Update to Unblock", "To Do", "To Do %", "No. of TC's Failed", "Fail %", "Exploratory Tc's added to Test Suite and details", "Additional Comments", "Task Owner", "POC/SL", "Actions"].map((label) => <th key={label} className={label === "Execution area" ? "sticky left-0 z-20 border-r border-slate-100 bg-[#fff8e8] px-3 py-3" : "px-3 py-3"}>{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{reportProject.execution.map((item) => <tr key={item.id} className="align-top text-[11px] text-slate-600"><td className="sticky left-0 z-10 border-r border-slate-100 bg-white px-3 py-3 font-bold text-slate-700">{item.area}</td><td className="px-3 py-3">{item.totalTestCases ?? "—"}</td><td className="px-3 py-3">{item.testCasesExecuted ?? "—"}</td><td className="px-3 py-3">{displayPercent(executionCompletion(item))}</td><td className="px-3 py-3">{item.testCasesPassed ?? "—"}</td><td className="px-3 py-3">{displayPercent(asPercent(item.testCasesPassed ?? null, item.totalTestCases ?? null))}</td><td className="px-3 py-3">{item.blocked ?? "—"}</td><td className="max-w-[200px] whitespace-pre-wrap px-3 py-3">{item.blockedReason || "—"}</td><td className="px-3 py-3">{displayPercent(asPercent(item.blocked ?? null, item.totalTestCases ?? null))}</td><td className="max-w-[200px] whitespace-pre-wrap px-3 py-3">{item.progressUpdateToUnblock || "—"}</td><td className="px-3 py-3">{item.toDo ?? "—"}</td><td className="px-3 py-3">{displayPercent(asPercent(item.toDo ?? null, item.totalTestCases ?? null))}</td><td className="px-3 py-3">{item.failed ?? "—"}</td><td className="px-3 py-3">{displayPercent(asPercent(item.failed ?? null, item.totalTestCases ?? null))}</td><td className="max-w-[200px] whitespace-pre-wrap px-3 py-3">{item.exploratoryTests || "—"}</td><td className="max-w-[240px] whitespace-pre-wrap px-3 py-3">{item.notes || "—"}</td><td className="px-3 py-3">{item.owner || "—"}</td><td className="px-3 py-3">{item.poc || "—"}</td><td className="px-3 py-3"><RowActions onEdit={() => openModal("execution", item.id)} onDelete={() => removeRecord("execution", item.id)} /></td></tr>)}</tbody></table></div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[2200px] text-left">
+          <thead>
+            <tr className="border-b border-slate-100 bg-[#fff8e8] text-[9px] font-bold uppercase tracking-[0.08em] text-slate-500">
+              <th className="sticky left-0 z-20 border-r border-slate-100 bg-[#fff8e8] px-3 py-3">Total No. Test cases</th>
+              <th className="px-3 py-3">Test cases Executed</th>
+              <th className="px-3 py-3">% of Completion</th>
+              <th className="px-3 py-3">No. of TC's Pass</th>
+              <th className="px-3 py-3">Pass %</th>
+              <th className="px-3 py-3">Blocked</th>
+              <th className="px-3 py-3">Blocked Reason</th>
+              <th className="px-3 py-3">Block %</th>
+              <th className="px-3 py-3">Progress Update to Unblock</th>
+              <th className="px-3 py-3">To Do</th>
+              <th className="px-3 py-3">To Do %</th>
+              <th className="px-3 py-3">No. of TC's Failed</th>
+              <th className="px-3 py-3">Fail %</th>
+              <th className="px-3 py-3">Exploratory Tc's added to Test Suite and details</th>
+              <th className="px-3 py-3">Additional Comments</th>
+              <th className="px-3 py-3">Task<br />Owner</th>
+              <th className="px-3 py-3">POC/SL</th>
+              <th className="px-3 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {reportProject.execution.map((item) => <tr key={item.id} className="align-top text-[11px] text-slate-600">
+              <td className="sticky left-0 z-10 border-r border-slate-100 bg-white px-3 py-3 font-bold text-slate-700"><span>{item.totalTestCases ?? "—"}</span><span className="mt-1 block text-[10px] font-medium text-slate-400">{item.area}</span></td>
+              <td className="px-3 py-3">{item.testCasesExecuted ?? "—"}</td>
+              <td className="px-3 py-3">{displayPercent(executionCompletion(item))}</td>
+              <td className="px-3 py-3">{item.testCasesPassed ?? "—"}</td>
+              <td className="px-3 py-3">{displayPercent(asPercent(item.testCasesPassed ?? null, item.totalTestCases ?? null))}</td>
+              <td className="px-3 py-3">{item.blocked ?? "—"}</td>
+              <td className="max-w-[200px] whitespace-pre-wrap px-3 py-3">{item.blockedReason || "—"}</td>
+              <td className="px-3 py-3">{displayPercent(asPercent(item.blocked ?? null, item.totalTestCases ?? null))}</td>
+              <td className="max-w-[200px] whitespace-pre-wrap px-3 py-3">{item.progressUpdateToUnblock || "—"}</td>
+              <td className="px-3 py-3">{item.toDo ?? "—"}</td>
+              <td className="px-3 py-3">{displayPercent(asPercent(item.toDo ?? null, item.totalTestCases ?? null))}</td>
+              <td className="px-3 py-3">{item.failed ?? "—"}</td>
+              <td className="px-3 py-3">{displayPercent(asPercent(item.failed ?? null, item.totalTestCases ?? null))}</td>
+              <td className="max-w-[200px] whitespace-pre-wrap px-3 py-3">{item.exploratoryTests || "—"}</td>
+              <td className="max-w-[240px] whitespace-pre-wrap px-3 py-3">{item.notes || "—"}</td>
+              <td className="px-3 py-3">{item.owner || "—"}</td>
+              <td className="px-3 py-3">{item.poc || "—"}</td>
+              <td className="px-3 py-3"><RowActions onEdit={() => openModal("execution", item.id)} onDelete={() => removeRecord("execution", item.id)} /></td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <div className="mb-5 grid gap-5 xl:grid-cols-2">
