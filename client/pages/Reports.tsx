@@ -5,7 +5,7 @@ import { useOutletContext } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
 import { PageTitle, SectionHeading, StatusBadge } from "@/components/dsr/DsrPrimitives";
-import { normalizeProject, projectCompletion, type Project, type Sprint } from "@/lib/dsr-data";
+import { executionMetricNumber, normalizeProject, projectCompletion, type ExecutionMetricValue, type Project, type Sprint } from "@/lib/dsr-data";
 
 const localDate = () => {
   const now = new Date();
@@ -52,8 +52,18 @@ const statusShadows: Record<string, string> = {
 const safeFileName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 const reportStageNames = ["Exploratory", "TC Design", "Functionality Execution", "Non Functionality Execution", "Automation- Print", "Automation- Scan"];
 const normalizeStageName = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
-const asPercent = (part: number | null | undefined, whole: number | null | undefined) => whole && whole > 0 && part !== null && part !== undefined ? `${Math.round((part / whole) * 10000) / 100}%` : "—";
-const completionPercent = (executed: number | null | undefined, total: number | null | undefined, completion: number | null) => total && total > 0 && executed !== null && executed !== undefined ? asPercent(executed, total) : completion === null ? "—" : `${Math.round(completion * 100)}%`;
+const asPercent = (part: ExecutionMetricValue | undefined, whole: ExecutionMetricValue | undefined) => {
+  const partNumber = executionMetricNumber(part);
+  const wholeNumber = executionMetricNumber(whole);
+  return wholeNumber && wholeNumber > 0 && partNumber !== null ? `${Math.round((partNumber / wholeNumber) * 10000) / 100}%` : "—";
+};
+const completionPercent = (executed: ExecutionMetricValue | undefined, total: ExecutionMetricValue | undefined, completion: ExecutionMetricValue) => {
+  const executedNumber = executionMetricNumber(executed);
+  const totalNumber = executionMetricNumber(total);
+  if (totalNumber && totalNumber > 0 && executedNumber !== null) return asPercent(executed, total);
+  if (completion === null || completion === "") return "—";
+  return typeof completion === "number" ? `${Math.round(completion * 100)}%` : executionMetricNumber(completion) === null ? completion : `${completion}%`;
+};
 
 function ReportDataTable({ rows }: { rows: [string, ReactNode][] }) {
   return <div className="min-w-0 overflow-hidden rounded-lg border border-slate-100"><table className="w-full table-fixed border-collapse text-left text-[10px]"><tbody className="divide-y divide-slate-100">{rows.map(([label, value]) => <tr key={label}><th scope="row" className="w-[42%] break-words bg-slate-50 px-2 py-1.5 font-semibold text-slate-500 [overflow-wrap:anywhere]">{label}</th><td className="break-words whitespace-pre-wrap px-2 py-1.5 text-slate-700 [overflow-wrap:anywhere]">{value === null || value === undefined || value === "" ? "—" : value}</td></tr>)}</tbody></table></div>;
@@ -69,16 +79,16 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: {
     counts: defectSeverities.map((severity) => report.defects.filter((defect) => (defect.status === defectStatus || (defectStatus === "In Progress" && defect.status === "Development")) && defect.severity === severity).length),
   }));
   const chartExecution = report.execution.map((item) => {
-    const total = item.totalTestCases ?? 0;
+    const total = executionMetricNumber(item.totalTestCases) ?? 0;
     return {
       category: item.area,
-      "Pass %": total ? Math.round(((item.testCasesPassed ?? 0) / total) * 10000) / 100 : 0,
-      "Block %": total ? Math.round(((item.blocked ?? 0) / total) * 10000) / 100 : 0,
-      "To Do %": total ? Math.round(((item.toDo ?? 0) / total) * 10000) / 100 : 0,
-      "Fail %": total ? Math.round(((item.failed ?? 0) / total) * 10000) / 100 : 0,
+      "Pass %": total ? Math.round(((executionMetricNumber(item.testCasesPassed) ?? 0) / total) * 10000) / 100 : 0,
+      "Block %": total ? Math.round(((executionMetricNumber(item.blocked) ?? 0) / total) * 10000) / 100 : 0,
+      "To Do %": total ? Math.round(((executionMetricNumber(item.toDo) ?? 0) / total) * 10000) / 100 : 0,
+      "Fail %": total ? Math.round(((executionMetricNumber(item.failed) ?? 0) / total) * 10000) / 100 : 0,
     };
   });
-  const hasExecutionMetrics = report.execution.some((item) => [item.totalTestCases, item.testCasesPassed, item.blocked, item.toDo, item.failed].some((value) => value !== null));
+  const hasExecutionMetrics = report.execution.some((item) => [item.totalTestCases, item.testCasesPassed, item.blocked, item.toDo, item.failed].some((value) => executionMetricNumber(value) !== null));
   const chartDefectSummary = defectSummary.map(({ status: name, counts }) => ({ status: name, P1: counts[0], P2: counts[1], P3: counts[2] }));
   const hasDefects = report.defects.length > 0;
   const reportStages = [...reportStageNames.filter((name) => !report.hiddenStages.includes(normalizeStageName(name))), ...project.stages.filter((stage) => stage.isCustom).map((stage) => stage.name)];

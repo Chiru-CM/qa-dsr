@@ -1,15 +1,14 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useLocation, useOutletContext, useParams } from "react-router-dom";
-import { ArrowLeft, FileText, Pencil, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Pencil, Plus, Save, ShieldAlert, Trash2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
 import { Modal } from "@/components/dsr/Modal";
 import { EmptyState, PageTitle, ProgressBar, SectionHeading, StatusBadge } from "@/components/dsr/DsrPrimitives";
-import { executionReportAreas, normalizeProject, statusOptions, type Blocker, type Defect, type DefectSeverity, type DefectStatus, type ExecutionItem, type NormalizedProject, type PreparationItem, type Project, type RecordStatus, type Risk, type StageStatus } from "@/lib/dsr-data";
+import { executionMetricNumber, normalizeProject, statusOptions, type Blocker, type Defect, type DefectSeverity, type DefectStatus, type ExecutionItem, type ExecutionMetricValue, type NormalizedProject, type PreparationItem, type Project, type StageStatus } from "@/lib/dsr-data";
 
-type ModalType = "blocker" | "execution" | "risk" | "project" | "stage" | "preparation" | "defect" | null;
-const recordStatuses: RecordStatus[] = ["Open", "Blocked", "Monitoring", "Resolved", "Deferred"];
+type ModalType = "blocker" | "execution" | "project" | "stage" | "preparation" | "defect" | null;
 const defectStatuses: DefectStatus[] = ["Open", "In Progress", "Development", "Fixed / In Verification", "Closed"];
 const defectSeverities: DefectSeverity[] = ["P1", "P2", "P3"];
 const defaultStageNames = ["Exploratory", "TC Design", "Functionality Execution", "Non Functionality Execution", "Automation- Print", "Automation- Scan"];
@@ -30,13 +29,21 @@ const stageStatusColors: Record<StageStatus, string> = {
   TBD: "bg-slate-50 text-slate-600",
 };
 
-const readNumber = (data: FormData, key: string) => {
+const readExecutionMetric = (data: FormData, key: string) => {
   const value = String(data.get(key) ?? "").trim();
-  return value === "" ? null : Math.max(0, Number(value));
+  return value === "" ? null : value;
 };
 
-const asPercent = (part: number | null, whole: number | null) => whole && whole > 0 && part !== null ? Math.round((part / whole) * 10000) / 100 : null;
-const executionCompletion = (item: ExecutionItem) => asPercent(item.testCasesExecuted ?? null, item.totalTestCases ?? null) ?? (item.completion === null ? null : Math.round(item.completion * 100));
+const asPercent = (part: ExecutionMetricValue | undefined, whole: ExecutionMetricValue | undefined) => {
+  const partNumber = executionMetricNumber(part);
+  const wholeNumber = executionMetricNumber(whole);
+  return wholeNumber && wholeNumber > 0 && partNumber !== null ? Math.round((partNumber / wholeNumber) * 10000) / 100 : null;
+};
+const executionCompletion = (item: ExecutionItem) => asPercent(item.testCasesExecuted, item.totalTestCases) ?? (item.completion === null ? null : typeof item.completion === "number" ? Math.round(item.completion * 100) : executionMetricNumber(item.completion));
+const completionDisplay = (item: ExecutionItem) => {
+  const percentage = executionCompletion(item);
+  return percentage === null ? item.completion || "—" : `${percentage}%`;
+};
 const displayPercent = (value: number | null) => value === null ? "—" : `${value}%`;
 
 const safeExternalUrl = (value: string) => {
@@ -49,13 +56,13 @@ const safeExternalUrl = (value: string) => {
 };
 
 const chartExecutionMetrics = (item: NormalizedProject["execution"][number]) => {
-  const total = item.totalTestCases ?? 0;
+  const total = item.totalTestCases;
   return {
     category: item.area,
-    "Pass %": total ? Math.round(((item.testCasesPassed ?? 0) / total) * 10000) / 100 : 0,
-    "Block %": total ? Math.round(((item.blocked ?? 0) / total) * 10000) / 100 : 0,
-    "To Do %": total ? Math.round(((item.toDo ?? 0) / total) * 10000) / 100 : 0,
-    "Fail %": total ? Math.round(((item.failed ?? 0) / total) * 10000) / 100 : 0,
+    "Pass %": asPercent(item.testCasesPassed, total) ?? 0,
+    "Block %": asPercent(item.blocked, total) ?? 0,
+    "To Do %": asPercent(item.toDo, total) ?? 0,
+    "Fail %": asPercent(item.failed, total) ?? 0,
   };
 };
 
@@ -73,6 +80,10 @@ function ProjectDetails() {
   const [bugIdsText, setBugIdsText] = useState("");
   const [editingHighLevelComments, setEditingHighLevelComments] = useState(false);
   const [highLevelCommentsText, setHighLevelCommentsText] = useState("");
+  const [editingProjectNotes, setEditingProjectNotes] = useState(false);
+  const [projectNotesText, setProjectNotesText] = useState("");
+  const [editingRiskSummary, setEditingRiskSummary] = useState(false);
+  const [riskSummaryText, setRiskSummaryText] = useState("");
   const project = projects.find((item) => item.id === projectId);
   const projectSprint = sprints.find((sprint) => sprint.id === activeSprintId && sprint.projectIds.includes(projectId ?? "")) ?? sprints.find((sprint) => sprint.projectIds.includes(projectId ?? ""));
 
@@ -86,7 +97,6 @@ function ProjectDetails() {
   const reportProject = normalizeProject(project);
   const editingBlocker = reportProject.blockers.find((item) => item.id === editingId);
   const editingExecution = reportProject.execution.find((item) => item.id === editingId);
-  const editingRisk = reportProject.risks.find((item) => item.id === editingId);
   const editingPreparation = reportProject.preparation.find((item) => item.id === editingId);
   const editingDefect = reportProject.defects.find((item) => item.id === editingId);
   const visibleStages = [
@@ -97,7 +107,7 @@ function ProjectDetails() {
     ...reportProject.stages.filter((stage) => stage.isCustom),
   ];
   const chartExecution = reportProject.execution.map(chartExecutionMetrics);
-  const hasExecutionMetrics = reportProject.execution.some((item) => [item.totalTestCases, item.testCasesPassed, item.blocked, item.toDo, item.failed].some((value) => value !== null && value !== undefined));
+  const hasExecutionMetrics = reportProject.execution.some((item) => [item.totalTestCases, item.testCasesPassed, item.blocked, item.toDo, item.failed].some((value) => executionMetricNumber(value) !== null));
   const defectSummary = defectSummaryStatuses.map((status) => ({
     status,
     P1: reportProject.defects.filter((defect) => defectStatusLabel(defect.status) === status && defect.severity === "P1").length,
@@ -172,6 +182,30 @@ function ProjectDetails() {
     setEditingHighLevelComments(false);
   };
 
+  const beginEditingProjectNotes = () => {
+    setProjectNotesText(reportProject.notes);
+    setEditingProjectNotes(true);
+  };
+
+  const saveProjectNotes = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const notes = String(new FormData(event.currentTarget).get("notes") ?? "").trim();
+    updateProject((current) => ({ ...current, notes, lastUpdated: todayLabel() }));
+    setEditingProjectNotes(false);
+  };
+
+  const beginEditingRiskSummary = () => {
+    setRiskSummaryText(reportProject.riskSummary);
+    setEditingRiskSummary(true);
+  };
+
+  const saveRiskSummary = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const riskSummary = String(new FormData(event.currentTarget).get("riskSummary") ?? "").trim();
+    updateProject((current) => ({ ...current, riskSummary, lastUpdated: todayLabel() }));
+    setEditingRiskSummary(false);
+  };
+
   const addCustomStage = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -194,24 +228,26 @@ function ProjectDetails() {
       updateProject((current) => ({ ...current, blockers: editingBlocker ? current.blockers.map((item) => item.id === editingBlocker.id ? record : item) : [...current.blockers, record], lastUpdated: todayLabel() }));
     }
     if (modal === "execution") {
-      const testCasesExecuted = readNumber(data, "testCasesExecuted");
-      const totalTestCases = readNumber(data, "totalTestCases");
-      const manualCompletion = readNumber(data, "completion");
+      const testCasesExecuted = readExecutionMetric(data, "testCasesExecuted");
+      const totalTestCases = readExecutionMetric(data, "totalTestCases");
+      const testCasesExecutedNumber = executionMetricNumber(testCasesExecuted);
+      const totalTestCasesNumber = executionMetricNumber(totalTestCases);
+      const manualCompletion = readExecutionMetric(data, "completion");
+      const manualCompletionNumber = executionMetricNumber(manualCompletion);
       const record: NormalizedProject["execution"][number] = {
-        ...(editingExecution ?? { id: crypto.randomUUID(), area: "", completion: null, bugs: [], notes: "", owner: "", poc: "" }),
-        area: value("area"),
+        ...(editingExecution ?? { id: crypto.randomUUID(), area: value("area"), completion: null, bugs: [], notes: "", owner: "", poc: "" }),
         totalTestCases,
         testCasesExecuted,
-        testCasesPassed: readNumber(data, "testCasesPassed"),
-        blocked: readNumber(data, "blocked"),
+        testCasesPassed: readExecutionMetric(data, "testCasesPassed"),
+        blocked: readExecutionMetric(data, "blocked"),
         blockedReason: value("blockedReason"),
-        etaToUnblock: value("etaToUnblock"),
+        etaToUnblock: editingExecution?.etaToUnblock ?? "",
         progressUpdateToUnblock: value("progressUpdateToUnblock"),
-        toDo: readNumber(data, "toDo"),
-        failed: readNumber(data, "failed"),
+        toDo: readExecutionMetric(data, "toDo"),
+        failed: readExecutionMetric(data, "failed"),
         exploratoryTests: value("exploratoryTests"),
-        completion: totalTestCases && testCasesExecuted !== null ? Math.min(1, testCasesExecuted / totalTestCases) : manualCompletion === null ? editingExecution?.completion ?? null : Math.min(100, manualCompletion) / 100,
-        bugs: value("bugs").split(",").map((bug) => bug.trim()).filter(Boolean),
+        completion: totalTestCasesNumber && testCasesExecutedNumber !== null ? Math.min(1, testCasesExecutedNumber / totalTestCasesNumber) : manualCompletion === null ? editingExecution?.completion ?? null : manualCompletionNumber === null ? manualCompletion : Math.min(100, manualCompletionNumber) / 100,
+        bugs: editingExecution?.bugs ?? [],
         notes: value("notes"),
         owner: value("owner"),
         poc: value("poc"),
@@ -226,22 +262,17 @@ function ProjectDetails() {
       const record: Defect = { id: value("id"), title: value("title"), impactedTestCases: value("impactedTestCases"), status: value("status") as DefectStatus, severity: value("severity") as DefectSeverity, comments: value("comments"), owner: value("owner"), poc: value("poc"), link: value("link") };
       updateProject((current) => ({ ...current, defects: editingDefect ? current.defects.map((item) => item.id === editingDefect.id ? record : item) : [...current.defects, record], lastUpdated: todayLabel() }));
     }
-    if (modal === "risk") {
-      const record: Risk = { id: editingRisk?.id ?? crypto.randomUUID(), description: value("description"), notes: value("notes"), status: value("status") as RecordStatus, owner: value("owner") };
-      updateProject((current) => ({ ...current, risks: editingRisk ? current.risks.map((item) => item.id === editingRisk.id ? record : item) : [...current.risks, record], lastUpdated: todayLabel() }));
-    }
     closeModal();
   };
 
-  const removeRecord = (type: "blocker" | "execution" | "preparation" | "risk" | "defect", id: string) => updateProject((current) => {
+  const removeRecord = (type: "blocker" | "execution" | "preparation" | "defect", id: string) => updateProject((current) => {
     if (type === "blocker") return { ...current, blockers: current.blockers.filter((item) => item.id !== id) };
     if (type === "execution") return { ...current, execution: current.execution.filter((item) => item.id !== id) };
     if (type === "preparation") return { ...current, preparation: current.preparation.filter((item) => item.id !== id), lastUpdated: todayLabel() };
-    if (type === "risk") return { ...current, risks: current.risks.filter((item) => item.id !== id) };
     return { ...current, defects: current.defects.filter((item) => item.id !== id) };
   });
 
-  const modalTitle = modal === "blocker" ? `${editingBlocker ? "Edit" : "Add"} blocker` : modal === "execution" ? `${editingExecution ? "Edit" : "Add"} execution item` : modal === "preparation" ? `${editingPreparation ? "Edit" : "Add"} preparation item` : modal === "defect" ? `${editingDefect ? "Edit" : "Add"} defect` : modal === "stage" ? "Add status item" : `${editingRisk ? "Edit" : "Add"} project risk`;
+  const modalTitle = modal === "blocker" ? `${editingBlocker ? "Edit" : "Add"} blocker` : modal === "execution" ? `${editingExecution ? "Edit" : "Add"} execution item` : modal === "preparation" ? `${editingPreparation ? "Edit" : "Add"} preparation item` : modal === "defect" ? `${editingDefect ? "Edit" : "Add"} defect` : "Add status item";
 
   return <div className="mx-auto max-w-[1440px]">
     <Link to={location.state?.fromSprint ? "/" : "/projects"} className="mb-5 inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 transition hover:text-[#218f82]"><ArrowLeft size={14} />{location.state?.fromSprint ? "Back to sprint overview" : "Back to all projects"}</Link>
@@ -284,7 +315,7 @@ function ProjectDetails() {
 
     <section className="mb-5 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]">
       <SectionHeading title="Test preparation summary" description="Readiness status, completion and unblock estimates, ownership, and comments." action={<button onClick={() => openModal("preparation")} className="inline-flex items-center gap-1.5 rounded-lg bg-[#eaf8f5] px-3 py-2 text-xs font-bold text-[#218f82] hover:bg-[#d9f3ee]"><Plus size={14} />Add preparation item</button>} />
-      {reportProject.preparation.length ? <div className="overflow-x-auto"><table className="w-full min-w-[1420px] table-fixed text-left"><colgroup><col className="w-[300px]" /><col className="w-[140px]" /><col className="w-[170px]" /><col className="w-[240px]" /><col className="w-[150px]" /><col className="w-[120px]" /><col className="w-[240px]" /><col className="w-[60px]" /></colgroup><thead><tr className="border-b border-slate-100 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400"><th className="sticky left-0 z-20 w-[300px] min-w-[300px] max-w-[300px] border-r border-slate-100 bg-white pb-3 pr-4">Preparation item</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4">ETA for completion</th><th className="pb-3 pr-4">Blocked reason</th><th className="pb-3 pr-4">ETA to unblock</th><th className="pb-3 pr-4">Owner</th><th className="pb-3 pr-4">Comments</th><th className="pb-3" /></tr></thead><tbody className="divide-y divide-slate-100">{reportProject.preparation.map((item) => <tr key={item.id} className="align-top text-xs"><td className="sticky left-0 z-10 w-[300px] min-w-[300px] max-w-[300px] border-r border-slate-100 bg-white py-3 pr-4 font-bold text-slate-700">{item.name}</td><td className="py-3 pr-4"><StatusBadge status={item.status} compact /></td><td className="py-3 pr-4 text-slate-600">{item.eta || "—"}</td><td className="max-w-[240px] whitespace-pre-wrap py-3 pr-4 text-slate-500">{item.blockedReason || "—"}</td><td className="py-3 pr-4 text-slate-600">{item.etaToUnblock || "—"}</td><td className="py-3 pr-4 text-slate-600">{item.owner || "—"}</td><td className="max-w-[260px] whitespace-pre-wrap py-3 pr-4 text-slate-500">{item.comments || "—"}</td><td className="py-3"><RowActions onEdit={() => openModal("preparation", item.id)} onDelete={() => removeRecord("preparation", item.id)} /></td></tr>)}</tbody></table></div> : <EmptyState title="No preparation items yet" description="Add a preparation item to track project readiness." />}
+      {reportProject.preparation.length ? <div className="overflow-x-auto"><table className="w-full min-w-[1320px] table-fixed text-left"><colgroup><col className="w-[200px]" /><col className="w-[140px]" /><col className="w-[170px]" /><col className="w-[240px]" /><col className="w-[150px]" /><col className="w-[120px]" /><col className="w-[240px]" /><col className="w-[60px]" /></colgroup><thead><tr className="border-b border-slate-100 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 text-center"><th className="sticky left-0 z-20 w-[200px] min-w-[200px] max-w-[200px] border-r border-slate-100 bg-white pb-3 pr-4 text-left">Preparation item</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4">ETA for completion</th><th className="pb-3 pr-4">Blocked reason</th><th className="pb-3 pr-4">ETA to unblock</th><th className="pb-3 pr-4">Owner</th><th className="pb-3 pr-4">Comments</th><th className="pb-3" /></tr></thead><tbody className="divide-y divide-slate-100">{reportProject.preparation.map((item) => <tr key={item.id} className="align-top text-xs text-center"><td className="sticky left-0 z-10 w-[200px] min-w-[200px] max-w-[200px] border-r border-slate-100 bg-white py-3 pr-4 font-bold text-slate-700 text-left">{item.name}</td><td className="py-3 pr-4 text-center"><StatusBadge status={item.status} compact /></td><td className={`py-3 pr-4 text-slate-600 ${item.eta ? "" : "text-center"}`}>{item.eta || "—"}</td><td className={`max-w-[240px] whitespace-pre-wrap py-3 pr-4 text-slate-500 ${item.blockedReason ? "" : "text-center"}`}>{item.blockedReason || "—"}</td><td className={`py-3 pr-4 text-slate-600 ${item.etaToUnblock ? "" : "text-center"}`}>{item.etaToUnblock || "—"}</td><td className={`py-3 pr-4 text-slate-600 ${item.owner ? "" : "text-center"}`}>{item.owner || "—"}</td><td className={`max-w-[260px] whitespace-pre-wrap py-3 pr-4 text-slate-500 ${item.comments ? "" : "text-center"}`}>{item.comments || "—"}</td><td className="py-3"><RowActions onEdit={() => openModal("preparation", item.id)} onDelete={() => removeRecord("preparation", item.id)} /></td></tr>)}</tbody></table></div> : <EmptyState title="No preparation items yet" description="Add a preparation item to track project readiness." />}
     </section>
 
     <section className="mb-5 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]">
@@ -319,7 +350,7 @@ function ProjectDetails() {
               <td className="sticky left-0 z-10 border-r border-slate-100 bg-white px-3 py-3 font-bold text-slate-700">{item.area}</td>
               <td className="px-3 py-3">{item.totalTestCases ?? "—"}</td>
               <td className="px-3 py-3">{item.testCasesExecuted ?? "—"}</td>
-              <td className="px-3 py-3">{displayPercent(executionCompletion(item))}</td>
+              <td className="px-3 py-3">{completionDisplay(item)}</td>
               <td className="px-3 py-3">{item.testCasesPassed ?? "—"}</td>
               <td className="px-3 py-3">{displayPercent(asPercent(item.testCasesPassed ?? null, item.totalTestCases ?? null))}</td>
               <td className="px-3 py-3">{item.blocked ?? "—"}</td>
@@ -343,7 +374,7 @@ function ProjectDetails() {
 
     <div className="mb-5 grid gap-5 xl:grid-cols-2">
       <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><SectionHeading title="Test execution outcomes" description="Pass, blocked, to-do, and failed percentages by execution area." />{hasExecutionMetrics ? <div className="mt-4 h-[320px] w-full rounded-lg bg-slate-100 p-2"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartExecution} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="category" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 10 }} /><YAxis domain={[0, 100]} tick={{ fontSize: 10 }} unit="%" /><Tooltip formatter={(value) => `${value}%`} /><Legend wrapperStyle={{ fontSize: 10 }} /><Bar dataKey="Pass %" fill="#5e9bd6" radius={[3, 3, 0, 0]}><LabelList dataKey="Pass %" position="insideTop" fill="#172b4d" fontSize={11} fontWeight={700} /></Bar><Bar dataKey="Block %" fill="#f3a477" radius={[3, 3, 0, 0]}><LabelList dataKey="Block %" position="insideTop" fill="#172b4d" fontSize={11} fontWeight={700} /></Bar><Bar dataKey="To Do %" fill="#aab0ba" radius={[3, 3, 0, 0]}><LabelList dataKey="To Do %" position="insideTop" fill="#172b4d" fontSize={11} fontWeight={700} /></Bar><Bar dataKey="Fail %" fill="#f07167" radius={[3, 3, 0, 0]}><LabelList dataKey="Fail %" position="insideTop" fill="#172b4d" fontSize={11} fontWeight={700} /></Bar></BarChart></ResponsiveContainer></div> : <EmptyState title="Execution chart is ready" description="Enter test case totals and outcome counts to populate this chart." />}</section>
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><SectionHeading title="Defect summary" description="Defect counts by workflow status and severity." action={<button onClick={() => openModal("defect")} className="inline-flex items-center gap-1.5 rounded-lg bg-[#eaf8f5] px-3 py-2 text-xs font-bold text-[#218f82] hover:bg-[#d9f3ee]"><Plus size={14} />Add defect</button>} />{reportProject.defects.length ? <><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[360px] text-left text-xs"><thead><tr className="border-b border-slate-100 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400"><th className="pb-3 pr-4">Status</th>{defectSeverities.map((severity) => <th key={severity} className="pb-3 pr-4">{severity}</th>)}<th className="pb-3">Total</th></tr></thead><tbody className="divide-y divide-slate-100">{defectSummary.map((row) => <tr key={row.status}><td className="py-2.5 pr-4 font-semibold text-slate-700">{row.status}</td>{defectSeverities.map((severity) => <td key={severity} className="py-2.5 pr-4 text-slate-600">{row[severity]}</td>)}<td className="py-2.5 font-bold text-slate-700">{row.P1 + row.P2 + row.P3}</td></tr>)}<tr className="border-t-2 border-slate-200"><td className="py-2.5 pr-4 font-bold text-slate-700">Total defects</td>{defectSeverities.map((severity) => <td key={severity} className="py-2.5 pr-4 font-bold text-slate-700">{totalDefectsBySeverity[severity]}</td>)}<td className="py-2.5 font-bold text-slate-800">{reportProject.defects.length}</td></tr></tbody></table></div><div className="mt-4 h-[220px] w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={defectSummary} margin={{ top: 8, right: 8, left: -20, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="status" tick={{ fontSize: 9 }} /><YAxis allowDecimals={false} tick={{ fontSize: 10 }} /><Tooltip /><Legend wrapperStyle={{ fontSize: 10 }} /><Bar dataKey="P1" stackId="severity" fill="#5996d3" radius={[2, 2, 0, 0]}><LabelList dataKey="P1" position="inside" fill="#172b4d" fontSize={10} fontWeight={700} /></Bar><Bar dataKey="P2" stackId="severity" fill="#eea37b"><LabelList dataKey="P2" position="inside" fill="#172b4d" fontSize={10} fontWeight={700} /></Bar><Bar dataKey="P3" stackId="severity" fill="#a9aeb8"><LabelList dataKey="P3" position="inside" fill="#172b4d" fontSize={10} fontWeight={700} /></Bar></BarChart></ResponsiveContainer></div></> : <EmptyState title="Defect summary is ready" description="Add defects to display counts by workflow status and severity." />}</section>
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><SectionHeading title="Defect summary" description="Defect counts by workflow status and severity." />{reportProject.defects.length ? <><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[360px] text-left text-xs"><thead><tr className="border-b border-slate-100 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400"><th className="pb-3 pr-4">Status</th>{defectSeverities.map((severity) => <th key={severity} className="pb-3 pr-4">{severity}</th>)}<th className="pb-3">Total</th></tr></thead><tbody className="divide-y divide-slate-100">{defectSummary.map((row) => <tr key={row.status}><td className="py-2.5 pr-4 font-semibold text-slate-700">{row.status}</td>{defectSeverities.map((severity) => <td key={severity} className="py-2.5 pr-4 text-slate-600">{row[severity]}</td>)}<td className="py-2.5 font-bold text-slate-700">{row.P1 + row.P2 + row.P3}</td></tr>)}<tr className="border-t-2 border-slate-200"><td className="py-2.5 pr-4 font-bold text-slate-700">Total defects</td>{defectSeverities.map((severity) => <td key={severity} className="py-2.5 pr-4 font-bold text-slate-700">{totalDefectsBySeverity[severity]}</td>)}<td className="py-2.5 font-bold text-slate-800">{reportProject.defects.length}</td></tr></tbody></table></div><div className="mt-4 h-[220px] w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={defectSummary} margin={{ top: 8, right: 8, left: -20, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="status" tick={{ fontSize: 9 }} /><YAxis allowDecimals={false} tick={{ fontSize: 10 }} /><Tooltip /><Legend wrapperStyle={{ fontSize: 10 }} /><Bar dataKey="P1" stackId="severity" fill="#5996d3" radius={[2, 2, 0, 0]}><LabelList dataKey="P1" position="inside" fill="#172b4d" fontSize={10} fontWeight={700} /></Bar><Bar dataKey="P2" stackId="severity" fill="#eea37b"><LabelList dataKey="P2" position="inside" fill="#172b4d" fontSize={10} fontWeight={700} /></Bar><Bar dataKey="P3" stackId="severity" fill="#a9aeb8"><LabelList dataKey="P3" position="inside" fill="#172b4d" fontSize={10} fontWeight={700} /></Bar></BarChart></ResponsiveContainer></div></> : <EmptyState title="Defect summary is ready" description="Add defects to display counts by workflow status and severity." />}</section>
     </div>
 
     <section className="mb-5 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]">
@@ -351,22 +382,54 @@ function ProjectDetails() {
       {reportProject.defects.length ? <div className="overflow-x-auto"><table className="w-full min-w-[1200px] text-left"><thead><tr className="border-b border-slate-100 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400"><th className="pb-3 pr-4">Defect ID</th><th className="pb-3 pr-4">Defect title</th><th className="pb-3 pr-4">Test cases impacted</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4">Severity</th><th className="pb-3 pr-4">Comments</th><th className="pb-3 pr-4">Task owner</th><th className="pb-3 pr-4">POC / SL</th><th className="pb-3 pr-4">Link</th><th className="pb-3" /></tr></thead><tbody className="divide-y divide-slate-100">{reportProject.defects.map((defect) => { const href = safeExternalUrl(defect.link); return <tr key={defect.id} className="align-top text-xs"><td className="py-3.5 pr-4 font-bold text-slate-700">{defect.id}</td><td className="max-w-[280px] whitespace-pre-wrap py-3.5 pr-4 font-semibold text-slate-700">{defect.title || "—"}</td><td className="max-w-[180px] whitespace-pre-wrap py-3.5 pr-4 text-slate-600">{defect.impactedTestCases || "—"}</td><td className="py-3.5 pr-4"><StatusBadge status={defect.status} compact /></td><td className="py-3.5 pr-4 font-bold text-slate-600">{defect.severity}</td><td className="max-w-[260px] whitespace-pre-wrap py-3.5 pr-4 text-slate-500">{defect.comments || "—"}</td><td className="py-3.5 pr-4 text-slate-600">{defect.owner || "—"}</td><td className="py-3.5 pr-4 text-slate-600">{defect.poc || "—"}</td><td className="max-w-[200px] break-all py-3.5 pr-4">{href ? <a href={href} target="_blank" rel="noreferrer" className="font-semibold text-[#218f82] underline">Open link</a> : defect.link || "—"}</td><td className="py-3.5"><RowActions onEdit={() => openModal("defect", defect.id)} onDelete={() => removeRecord("defect", defect.id)} /></td></tr>; })}</tbody></table></div> : <EmptyState title="No defects recorded" description="Add defects to populate the severity summary and chart." />}
     </section>
 
-    <section className="mb-5 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><SectionHeading title="Blockers" description="Issues impacting delivery or test case coverage." action={<button onClick={() => openModal("blocker")} className="inline-flex items-center gap-1.5 rounded-lg bg-[#eaf8f5] px-3 py-2 text-xs font-bold text-[#218f82] hover:bg-[#d9f3ee]"><Plus size={14} />Add blocker</button>} />{reportProject.blockers.length ? <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left"><thead><tr className="border-b border-slate-100 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400"><th className="pb-3 pr-4">Description</th><th className="pb-3 pr-4">Impacted test cases</th><th className="pb-3 pr-4">Current status</th><th className="pb-3 pr-4">Additional notes</th><th className="pb-3" /></tr></thead><tbody className="divide-y divide-slate-100">{reportProject.blockers.map((blocker) => <tr key={blocker.id} className="text-xs"><td className="py-3.5 pr-4 font-bold text-slate-700">{blocker.description}</td><td className="py-3.5 pr-4 font-semibold text-slate-600">{blocker.impact}%</td><td className="py-3.5 pr-4"><StatusBadge status={blocker.currentStatus} compact /></td><td className="max-w-[440px] whitespace-pre-wrap py-3.5 pr-4 leading-5 text-slate-500">{blocker.notes || "—"}</td><td className="py-3.5"><RowActions onEdit={() => openModal("blocker", blocker.id)} onDelete={() => removeRecord("blocker", blocker.id)} /></td></tr>)}</tbody></table></div> : <EmptyState title="No blockers recorded" description="Add delivery blockers and their impacted test-case percentage." />}</section>
 
     <div className="grid gap-5 xl:grid-cols-[1fr_0.8fr]">
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><SectionHeading title="Current project risks" description="Risks to monitor through the next reporting cycle." action={<button onClick={() => openModal("risk")} className="inline-flex items-center gap-1.5 rounded-lg bg-[#eaf8f5] px-3 py-2 text-xs font-bold text-[#218f82] hover:bg-[#d9f3ee]"><Plus size={14} />Add risk</button>} />{reportProject.risks.length ? <div className="space-y-3">{reportProject.risks.map((risk) => <div key={risk.id} className="rounded-xl border border-slate-100 bg-slate-50/50 p-3.5"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold text-slate-700">{risk.description}</p><p className="mt-1 whitespace-pre-wrap text-[11px] leading-5 text-slate-500">{risk.notes || "No additional notes."}</p></div><RowActions onEdit={() => openModal("risk", risk.id)} onDelete={() => removeRecord("risk", risk.id)} /></div><div className="mt-3 flex items-center gap-3"><StatusBadge status={risk.status} compact /><span className="text-[11px] font-medium text-slate-400">Owner: {risk.owner || "Unassigned"}</span></div></div>)}</div> : <EmptyState title="No project risks recorded" description="Capture risks that need monitoring even when they are not blocking execution." />}</section>
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><SectionHeading title="Notes" description="High-level context for the current DSR." /><div className="rounded-xl bg-[#f7f9fc] p-4"><FileText size={17} className="text-[#37b9a5]" /><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">{reportProject.notes || "No notes added yet."}</p></div><button onClick={() => openModal("project")} className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-[#218f82] hover:underline"><Pencil size={13} />Edit project notes</button></section>
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]">
+        <SectionHeading title="Current project risks" description="Risks to monitor through the next reporting cycle." />
+        {editingRiskSummary ? <form onSubmit={saveRiskSummary} className="mt-4 space-y-3">
+          <textarea name="riskSummary" aria-label="Current project risks" value={riskSummaryText} onChange={(event) => setRiskSummaryText(event.target.value)} rows={5} className={`${inputClass} !h-auto min-h-[120px] resize-y`} />
+          <div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingRiskSummary(false)} className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100">Cancel</button><button className="rounded-lg bg-[#10263d] px-3 py-2 text-xs font-bold text-white">Save</button></div>
+        </form> : <>
+          <div className="rounded-xl bg-[#f7f9fc] p-4"><ShieldAlert size={17} className="text-[#37b9a5]" /><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">{reportProject.riskSummary || "No project risks recorded."}</p></div>
+          <button type="button" onClick={beginEditingRiskSummary} className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-[#218f82] hover:underline"><Pencil size={13} />Edit project risks</button>
+        </>}
+      </section>
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]">
+        <SectionHeading title="Notes" description="High-level context for the current DSR." />
+        {editingProjectNotes ? <form onSubmit={saveProjectNotes} className="mt-4 space-y-3">
+          <textarea name="notes" aria-label="Project notes" value={projectNotesText} onChange={(event) => setProjectNotesText(event.target.value)} rows={5} className={`${inputClass} !h-auto min-h-[120px] resize-y`} />
+          <div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingProjectNotes(false)} className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100">Cancel</button><button className="rounded-lg bg-[#10263d] px-3 py-2 text-xs font-bold text-white">Save</button></div>
+        </form> : <>
+          <div className="rounded-xl bg-[#f7f9fc] p-4"><FileText size={17} className="text-[#37b9a5]" /><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">{reportProject.notes || "No notes added yet."}</p></div>
+          <button type="button" onClick={beginEditingProjectNotes} className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-[#218f82] hover:underline"><Pencil size={13} />Edit project notes</button>
+        </>}
+      </section>
     </div>
 
     <Modal open={modal === "stage"} onClose={closeModal} title="Add status item" description="Add an extra stage to this project's high-level status report."><form onSubmit={addCustomStage} className="space-y-4"><Field label="Stage name"><input name="name" required placeholder="e.g. Security validation" className={inputClass} /></Field><Field label="Initial status"><select name="status" defaultValue="Yet to Start" className={inputClass}>{stageStatusOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>{stageError && <p role="alert" className="text-xs font-medium text-[#c65e52]">{stageError}</p>}<FormFooter onCancel={closeModal} label="Add item" /></form></Modal>
 
     <Modal open={modal === "project"} onClose={closeModal} title="Edit project report" description="Update the report header and project context." wide><form onSubmit={saveProject} className="grid gap-4 sm:grid-cols-2"><Field label="Project name"><input name="name" defaultValue={reportProject.name} required className={inputClass} /></Field><p className="self-center text-xs text-slate-500 sm:col-span-2">Sprint dates are managed in the sprint configuration.</p><Field label="Firmware version"><input name="firmwareVersion" defaultValue={reportProject.report.firmwareVersion} className={inputClass} /></Field><Field label="Solution version"><input name="solutionVersion" defaultValue={reportProject.report.solutionVersion} className={inputClass} /></Field><Field label="Targeted devices" className="sm:col-span-2"><textarea name="targetedDevices" defaultValue={reportProject.report.targetedDevices} rows={2} className={`${inputClass} resize-y`} /></Field><div className="sm:col-span-2 rounded-lg border border-slate-100 p-3"><h3 className="text-xs font-bold text-slate-700">Status items</h3>{visibleStages.length ? <div className="mt-2 divide-y divide-slate-100">{visibleStages.map((stage) => <div key={stage.id} className="flex items-center justify-between gap-3 py-2"><span className="text-xs font-medium text-slate-600">{stage.name}</span><button type="button" onClick={() => deleteStatusItem(stage)} aria-label={`Delete ${stage.name} status item`} className="rounded-md px-2 py-1 text-xs font-semibold text-[#c65e52] hover:bg-[#fff0ed]">Delete</button></div>)}</div> : <p className="mt-2 text-xs text-slate-400">No status items.</p>}</div><FormFooter onCancel={closeModal} label="Save changes" /></form></Modal>
 
-    <Modal open={modal === "preparation" || modal === "execution" || modal === "risk" || modal === "blocker" || modal === "defect"} onClose={closeModal} title={modalTitle} description="Keep the project report current with the latest execution details." wide>
+    <Modal open={modal === "preparation" || modal === "execution" || modal === "blocker" || modal === "defect"} onClose={closeModal} title={modalTitle} description="Keep the project report current with the latest execution details." wide>
       {modal === "preparation" && <form onSubmit={saveRecord} className="grid gap-4 sm:grid-cols-2"><Field label="Preparation item"><input name="name" defaultValue={editingPreparation?.name ?? ""} required className={inputClass} /></Field><Field label="Status"><select name="status" defaultValue={editingPreparation?.status ?? "Yet to Start"} className={inputClass}>{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></Field><Field label="ETA for completion"><input name="eta" defaultValue={editingPreparation?.eta ?? ""} placeholder="e.g. 30/10/2026 or TBD" className={inputClass} /></Field><Field label="Blocked reason"><input name="blockedReason" defaultValue={editingPreparation?.blockedReason ?? ""} className={inputClass} /></Field><Field label="ETA to unblock"><input name="etaToUnblock" defaultValue={editingPreparation?.etaToUnblock ?? ""} placeholder="e.g. 30/10/2026 or TBD" className={inputClass} /></Field><Field label="Owner"><input name="owner" defaultValue={editingPreparation?.owner ?? ""} className={inputClass} /></Field><Field label="Comments" className="sm:col-span-2"><textarea name="comments" defaultValue={editingPreparation?.comments ?? ""} rows={3} className={`${inputClass} resize-y`} /></Field><FormFooter onCancel={closeModal} label={editingPreparation ? "Save item" : "Add item"} /></form>}
-      {modal === "execution" && <form onSubmit={saveRecord} className="grid max-h-[70vh] gap-4 overflow-y-auto pr-1 sm:grid-cols-2"><Field label="Execution area"><select name="area" defaultValue={editingExecution?.area ?? executionReportAreas[0]} className={inputClass}>{[...executionReportAreas, ...reportProject.execution.map((item) => item.area).filter((area) => !executionReportAreas.includes(area as typeof executionReportAreas[number]))].map((area) => <option key={area}>{area}</option>)}</select></Field><Field label="Total test cases"><input name="totalTestCases" type="number" min="0" defaultValue={editingExecution?.totalTestCases ?? ""} className={inputClass} /></Field><Field label="Test cases executed"><input name="testCasesExecuted" type="number" min="0" defaultValue={editingExecution?.testCasesExecuted ?? ""} className={inputClass} /></Field><Field label="Completion (%)"><input name="completion" type="number" min="0" max="100" defaultValue={editingExecution ? executionCompletion(editingExecution) ?? "" : ""} className={inputClass} /></Field><Field label="Test cases passed"><input name="testCasesPassed" type="number" min="0" defaultValue={editingExecution?.testCasesPassed ?? ""} className={inputClass} /></Field><Field label="Blocked"><input name="blocked" type="number" min="0" defaultValue={editingExecution?.blocked ?? ""} className={inputClass} /></Field><Field label="Blocked reason"><input name="blockedReason" defaultValue={editingExecution?.blockedReason ?? ""} className={inputClass} /></Field><Field label="ETA to unblock"><input name="etaToUnblock" defaultValue={editingExecution?.etaToUnblock ?? ""} placeholder="e.g. 30/10/2026 or TBD" className={inputClass} /></Field><Field label="Progress update to unblock"><textarea name="progressUpdateToUnblock" defaultValue={editingExecution?.progressUpdateToUnblock ?? ""} rows={2} className={`${inputClass} resize-y`} /></Field><Field label="Owner"><input name="owner" defaultValue={editingExecution?.owner ?? reportProject.owner} className={inputClass} /></Field><Field label="POC / SL"><input name="poc" defaultValue={editingExecution?.poc ?? ""} className={inputClass} /></Field><Field label="To do"><input name="toDo" type="number" min="0" defaultValue={editingExecution?.toDo ?? ""} className={inputClass} /></Field><Field label="Test cases failed"><input name="failed" type="number" min="0" defaultValue={editingExecution?.failed ?? ""} className={inputClass} /></Field><Field label="Bugs submitted"><input name="bugs" defaultValue={editingExecution?.bugs.join(", ") ?? ""} placeholder="Comma-separated defect IDs" className={inputClass} /></Field><Field label="Exploratory tests added"><textarea name="exploratoryTests" defaultValue={editingExecution?.exploratoryTests ?? ""} rows={2} className={`${inputClass} resize-y`} /></Field><Field label="Additional comments" className="sm:col-span-2"><textarea name="notes" defaultValue={editingExecution?.notes ?? ""} rows={3} className={`${inputClass} resize-y`} /></Field><FormFooter onCancel={closeModal} label={editingExecution ? "Save item" : "Add item"} /></form>}
+      {modal === "execution" && <form onSubmit={saveRecord} className="grid max-h-[70vh] gap-4 overflow-y-auto pr-1 sm:grid-cols-2">
+        {!editingExecution && <Field label="Execution area"><input name="area" type="text" required placeholder="e.g. Functionality" className={inputClass} /></Field>}
+        <Field label="Total test cases"><input name="totalTestCases" type="text" defaultValue={editingExecution?.totalTestCases ?? ""} className={inputClass} /></Field>
+        <Field label="Test cases executed"><input name="testCasesExecuted" type="text" defaultValue={editingExecution?.testCasesExecuted ?? ""} className={inputClass} /></Field>
+        <Field label="Completion (%)"><input name="completion" type="text" defaultValue={editingExecution ? executionCompletion(editingExecution) ?? editingExecution.completion ?? "" : ""} className={inputClass} /></Field>
+        <Field label="Test cases passed"><input name="testCasesPassed" type="text" defaultValue={editingExecution?.testCasesPassed ?? ""} className={inputClass} /></Field>
+        <Field label="Blocked"><input name="blocked" type="text" defaultValue={editingExecution?.blocked ?? ""} className={inputClass} /></Field>
+        <Field label="Blocked reason"><input name="blockedReason" defaultValue={editingExecution?.blockedReason ?? ""} className={inputClass} /></Field>
+        <Field label="Progress update to unblock"><textarea name="progressUpdateToUnblock" defaultValue={editingExecution?.progressUpdateToUnblock ?? ""} rows={2} className="form-input resize-y" /></Field>
+        <Field label="To do"><input name="toDo" type="text" defaultValue={editingExecution?.toDo ?? ""} className={inputClass} /></Field>
+        <Field label="Test cases failed"><input name="failed" type="text" defaultValue={editingExecution?.failed ?? ""} className={inputClass} /></Field>
+        <Field label="Exploratory tests added"><textarea name="exploratoryTests" defaultValue={editingExecution?.exploratoryTests ?? ""} rows={2} className="form-input resize-y" /></Field>
+        <Field label="Additional comments" className="sm:col-span-2"><textarea name="notes" defaultValue={editingExecution?.notes ?? ""} rows={3} className="form-input resize-y" /></Field>
+        <Field label="Task owner"><input name="owner" type="text" defaultValue={editingExecution?.owner ?? reportProject.owner} placeholder="Enter task owner" className={inputClass} /></Field>
+        <Field label="POC / SL"><input name="poc" type="text" defaultValue={editingExecution?.poc ?? ""} placeholder="Enter POC / SL" className={inputClass} /></Field>
+        <FormFooter onCancel={closeModal} label={editingExecution ? "Save item" : "Add item"} />
+      </form>}
       {modal === "blocker" && <form onSubmit={saveRecord} className="grid gap-4 sm:grid-cols-2"><Field label="Description" className="sm:col-span-2"><input name="description" defaultValue={editingBlocker?.description ?? ""} required className={inputClass} /></Field><Field label="Impacted test cases (%)"><input name="impact" type="number" min="0" max="100" defaultValue={editingBlocker?.impact ?? 0} className={inputClass} /></Field><Field label="Current status"><input name="currentStatus" defaultValue={editingBlocker?.currentStatus ?? ""} className={inputClass} /></Field><Field label="Additional notes" className="sm:col-span-2"><textarea name="notes" defaultValue={editingBlocker?.notes ?? ""} rows={3} className={`${inputClass} resize-y`} /></Field><FormFooter onCancel={closeModal} label={editingBlocker ? "Save blocker" : "Add blocker"} /></form>}
-      {modal === "risk" && <form onSubmit={saveRecord} className="grid gap-4 sm:grid-cols-2"><Field label="Risk description" className="sm:col-span-2"><input name="description" defaultValue={editingRisk?.description ?? ""} required className={inputClass} /></Field><Field label="Status"><select name="status" defaultValue={editingRisk?.status ?? "Open"} className={inputClass}>{recordStatuses.map((status) => <option key={status}>{status}</option>)}</select></Field><Field label="Owner"><input name="owner" defaultValue={editingRisk?.owner ?? ""} className={inputClass} /></Field><Field label="Additional notes" className="sm:col-span-2"><textarea name="notes" defaultValue={editingRisk?.notes ?? ""} rows={3} className={`${inputClass} resize-y`} /></Field><FormFooter onCancel={closeModal} label={editingRisk ? "Save risk" : "Add risk"} /></form>}
       {modal === "defect" && <form onSubmit={saveRecord} className="grid max-h-[70vh] gap-4 overflow-y-auto pr-1 sm:grid-cols-2"><Field label="Defect ID"><input name="id" defaultValue={editingDefect?.id ?? ""} required className={inputClass} /></Field><Field label="Severity"><select name="severity" defaultValue={editingDefect?.severity ?? "P2"} className={inputClass}>{defectSeverities.map((severity) => <option key={severity}>{severity}</option>)}</select></Field><Field label="Defect title" className="sm:col-span-2"><input name="title" defaultValue={editingDefect?.title ?? ""} required className={inputClass} /></Field><Field label="Test cases impacted"><textarea name="impactedTestCases" defaultValue={editingDefect?.impactedTestCases ?? ""} rows={2} className={`${inputClass} resize-y`} /></Field><Field label="Status"><select name="status" defaultValue={editingDefect?.status ?? "Open"} className={inputClass}>{defectStatuses.map((status) => <option key={status}>{status}</option>)}</select></Field><Field label="Task owner"><input name="owner" defaultValue={editingDefect?.owner ?? ""} className={inputClass} /></Field><Field label="POC / SL"><input name="poc" defaultValue={editingDefect?.poc ?? ""} className={inputClass} /></Field><Field label="Defect link" className="sm:col-span-2"><input name="link" type="url" defaultValue={editingDefect?.link ?? ""} placeholder="https://…" className={inputClass} /></Field><Field label="Comments" className="sm:col-span-2"><textarea name="comments" defaultValue={editingDefect?.comments ?? ""} rows={3} className={`${inputClass} resize-y`} /></Field><FormFooter onCancel={closeModal} label={editingDefect ? "Save defect" : "Add defect"} /></form>}
     </Modal>
 

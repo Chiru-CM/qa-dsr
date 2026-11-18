@@ -39,23 +39,32 @@ export interface Blocker {
   notes: string;
 }
 
+export type ExecutionMetricValue = number | string | null;
+
+export const executionMetricNumber = (value: ExecutionMetricValue | undefined) => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string" || !value.trim()) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+};
+
 export interface ExecutionMetrics {
-  totalTestCases?: number | null;
-  testCasesExecuted?: number | null;
-  testCasesPassed?: number | null;
-  blocked?: number | null;
+  totalTestCases?: ExecutionMetricValue;
+  testCasesExecuted?: ExecutionMetricValue;
+  testCasesPassed?: ExecutionMetricValue;
+  blocked?: ExecutionMetricValue;
   blockedReason?: string;
   etaToUnblock?: string;
   progressUpdateToUnblock?: string;
-  toDo?: number | null;
-  failed?: number | null;
+  toDo?: ExecutionMetricValue;
+  failed?: ExecutionMetricValue;
   exploratoryTests?: string;
 }
 
 export interface ExecutionItem extends ExecutionMetrics {
   id: string;
   area: string;
-  completion: number | null;
+  completion: ExecutionMetricValue;
   bugs: string[];
   notes: string;
   owner: string;
@@ -116,6 +125,7 @@ export interface Project {
   blockers: Blocker[];
   execution: ExecutionItem[];
   risks: Risk[];
+  riskSummary?: string;
   notes: string;
   report?: ProjectReport;
   preparation?: PreparationItem[];
@@ -145,7 +155,7 @@ export interface DailySnapshot {
 }
 
 export type NormalizedExecutionItem = ExecutionItem & Required<ExecutionMetrics>;
-export type NormalizedProject = Omit<Project, "report" | "preparation" | "execution" | "defects" | "validatedDefects" | "bugIds" | "highLevelComments" | "hiddenStages" | "additionalNotes"> & {
+export type NormalizedProject = Omit<Project, "report" | "preparation" | "execution" | "defects" | "validatedDefects" | "bugIds" | "highLevelComments" | "hiddenStages" | "additionalNotes" | "riskSummary"> & {
   report: ProjectReport;
   preparation: PreparationItem[];
   execution: NormalizedExecutionItem[];
@@ -155,6 +165,7 @@ export type NormalizedProject = Omit<Project, "report" | "preparation" | "execut
   highLevelComments: string;
   hiddenStages: string[];
   additionalNotes: string;
+  riskSummary: string;
 };
 
 const emptyProjectReport: ProjectReport = {
@@ -236,6 +247,7 @@ export function normalizeProject(project: Project): NormalizedProject {
     highLevelComments: project.highLevelComments ?? "",
     hiddenStages: project.hiddenStages ?? [],
     additionalNotes: project.additionalNotes ?? "",
+    riskSummary: project.riskSummary ?? project.risks.map((risk) => [risk.description, risk.notes].filter(Boolean).join("\n")).join("\n\n"),
   };
 }
 
@@ -290,7 +302,7 @@ export const statusTone = (status: string) => {
 };
 
 export const projectCompletion = (project: Project) => {
-  const values = project.execution.map((entry) => entry.completion).filter((value): value is number => value !== null);
+  const values = project.execution.map((entry) => entry.completion).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
   return values.length ? Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 100) : 0;
 };
 
