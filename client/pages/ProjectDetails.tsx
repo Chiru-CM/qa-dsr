@@ -204,13 +204,13 @@ function ProjectDetails() {
         testCasesPassed: readNumber(data, "testCasesPassed"),
         blocked: readNumber(data, "blocked"),
         blockedReason: value("blockedReason"),
-        etaToUnblock: value("etaToUnblock"),
+        etaToUnblock: editingExecution?.etaToUnblock ?? "",
         progressUpdateToUnblock: value("progressUpdateToUnblock"),
         toDo: readNumber(data, "toDo"),
         failed: readNumber(data, "failed"),
         exploratoryTests: value("exploratoryTests"),
         completion: totalTestCases && testCasesExecuted !== null ? Math.min(1, testCasesExecuted / totalTestCases) : manualCompletion === null ? editingExecution?.completion ?? null : Math.min(100, manualCompletion) / 100,
-        bugs: value("bugs").split(",").map((bug) => bug.trim()).filter(Boolean),
+        bugs: editingExecution?.bugs ?? [],
         notes: value("notes"),
         owner: value("owner"),
         poc: value("poc"),
@@ -378,8 +378,6 @@ function ProjectDetails() {
         <Field label="Additional comments" className="sm:col-span-2"><textarea name="notes" defaultValue={editingExecution?.notes ?? ""} rows={3} className="form-input resize-y" /></Field>
         <Field label="Task owner"><input name="owner" type="text" defaultValue={editingExecution?.owner ?? reportProject.owner} placeholder="Enter task owner" className={inputClass} /></Field>
         <Field label="POC / SL"><input name="poc" type="text" defaultValue={editingExecution?.poc ?? ""} placeholder="Enter POC / SL" className={inputClass} /></Field>
-        <Field label="ETA to unblock"><input name="etaToUnblock" defaultValue={editingExecution?.etaToUnblock ?? ""} placeholder="e.g. 30/10/2026 or TBD" className={inputClass} /></Field>
-        <Field label="Bugs submitted"><input name="bugs" defaultValue={editingExecution?.bugs.join(", ") ?? ""} placeholder="Comma-separated defect IDs" className={inputClass} /></Field>
         <FormFooter onCancel={closeModal} label={editingExecution ? "Save item" : "Add item"} />
       </form>}
       {modal === "blocker" && <form onSubmit={saveRecord} className="grid gap-4 sm:grid-cols-2"><Field label="Description" className="sm:col-span-2"><input name="description" defaultValue={editingBlocker?.description ?? ""} required className={inputClass} /></Field><Field label="Impacted test cases (%)"><input name="impact" type="number" min="0" max="100" defaultValue={editingBlocker?.impact ?? 0} className={inputClass} /></Field><Field label="Current status"><input name="currentStatus" defaultValue={editingBlocker?.currentStatus ?? ""} className={inputClass} /></Field><Field label="Additional notes" className="sm:col-span-2"><textarea name="notes" defaultValue={editingBlocker?.notes ?? ""} rows={3} className={`${inputClass} resize-y`} /></Field><FormFooter onCancel={closeModal} label={editingBlocker ? "Save blocker" : "Add blocker"} /></form>}
