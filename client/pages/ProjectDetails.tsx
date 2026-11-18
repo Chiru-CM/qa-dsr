@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, T
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
 import { Modal } from "@/components/dsr/Modal";
 import { EmptyState, PageTitle, ProgressBar, SectionHeading, StatusBadge } from "@/components/dsr/DsrPrimitives";
-import { normalizeProject, statusOptions, type Blocker, type Defect, type DefectSeverity, type DefectStatus, type ExecutionItem, type NormalizedProject, type PreparationItem, type Project, type RecordStatus, type Risk, type StageStatus } from "@/lib/dsr-data";
+import { executionMetricNumber, normalizeProject, statusOptions, type Blocker, type Defect, type DefectSeverity, type DefectStatus, type ExecutionItem, type ExecutionMetricValue, type NormalizedProject, type PreparationItem, type Project, type RecordStatus, type Risk, type StageStatus } from "@/lib/dsr-data";
 
 type ModalType = "blocker" | "execution" | "risk" | "project" | "stage" | "preparation" | "defect" | null;
 const recordStatuses: RecordStatus[] = ["Open", "Blocked", "Monitoring", "Resolved", "Deferred"];
@@ -30,13 +30,21 @@ const stageStatusColors: Record<StageStatus, string> = {
   TBD: "bg-slate-50 text-slate-600",
 };
 
-const readNumber = (data: FormData, key: string) => {
+const readExecutionMetric = (data: FormData, key: string) => {
   const value = String(data.get(key) ?? "").trim();
-  return value === "" ? null : Math.max(0, Number(value));
+  return value === "" ? null : value;
 };
 
-const asPercent = (part: number | null, whole: number | null) => whole && whole > 0 && part !== null ? Math.round((part / whole) * 10000) / 100 : null;
-const executionCompletion = (item: ExecutionItem) => asPercent(item.testCasesExecuted ?? null, item.totalTestCases ?? null) ?? (item.completion === null ? null : Math.round(item.completion * 100));
+const asPercent = (part: ExecutionMetricValue | undefined, whole: ExecutionMetricValue | undefined) => {
+  const partNumber = executionMetricNumber(part);
+  const wholeNumber = executionMetricNumber(whole);
+  return wholeNumber && wholeNumber > 0 && partNumber !== null ? Math.round((partNumber / wholeNumber) * 10000) / 100 : null;
+};
+const executionCompletion = (item: ExecutionItem) => asPercent(item.testCasesExecuted, item.totalTestCases) ?? (item.completion === null ? null : typeof item.completion === "number" ? Math.round(item.completion * 100) : executionMetricNumber(item.completion));
+const completionDisplay = (item: ExecutionItem) => {
+  const percentage = executionCompletion(item);
+  return percentage === null ? item.completion || "—" : `${percentage}%`;
+};
 const displayPercent = (value: number | null) => value === null ? "—" : `${value}%`;
 
 const safeExternalUrl = (value: string) => {
@@ -49,13 +57,13 @@ const safeExternalUrl = (value: string) => {
 };
 
 const chartExecutionMetrics = (item: NormalizedProject["execution"][number]) => {
-  const total = item.totalTestCases ?? 0;
+  const total = item.totalTestCases;
   return {
     category: item.area,
-    "Pass %": total ? Math.round(((item.testCasesPassed ?? 0) / total) * 10000) / 100 : 0,
-    "Block %": total ? Math.round(((item.blocked ?? 0) / total) * 10000) / 100 : 0,
-    "To Do %": total ? Math.round(((item.toDo ?? 0) / total) * 10000) / 100 : 0,
-    "Fail %": total ? Math.round(((item.failed ?? 0) / total) * 10000) / 100 : 0,
+    "Pass %": asPercent(item.testCasesPassed, total) ?? 0,
+    "Block %": asPercent(item.blocked, total) ?? 0,
+    "To Do %": asPercent(item.toDo, total) ?? 0,
+    "Fail %": asPercent(item.failed, total) ?? 0,
   };
 };
 
@@ -97,7 +105,7 @@ function ProjectDetails() {
     ...reportProject.stages.filter((stage) => stage.isCustom),
   ];
   const chartExecution = reportProject.execution.map(chartExecutionMetrics);
-  const hasExecutionMetrics = reportProject.execution.some((item) => [item.totalTestCases, item.testCasesPassed, item.blocked, item.toDo, item.failed].some((value) => value !== null && value !== undefined));
+  const hasExecutionMetrics = reportProject.execution.some((item) => [item.totalTestCases, item.testCasesPassed, item.blocked, item.toDo, item.failed].some((value) => executionMetricNumber(value) !== null));
   const defectSummary = defectSummaryStatuses.map((status) => ({
     status,
     P1: reportProject.defects.filter((defect) => defectStatusLabel(defect.status) === status && defect.severity === "P1").length,
@@ -194,22 +202,25 @@ function ProjectDetails() {
       updateProject((current) => ({ ...current, blockers: editingBlocker ? current.blockers.map((item) => item.id === editingBlocker.id ? record : item) : [...current.blockers, record], lastUpdated: todayLabel() }));
     }
     if (modal === "execution") {
-      const testCasesExecuted = readNumber(data, "testCasesExecuted");
-      const totalTestCases = readNumber(data, "totalTestCases");
-      const manualCompletion = readNumber(data, "completion");
+      const testCasesExecuted = readExecutionMetric(data, "testCasesExecuted");
+      const totalTestCases = readExecutionMetric(data, "totalTestCases");
+      const testCasesExecutedNumber = executionMetricNumber(testCasesExecuted);
+      const totalTestCasesNumber = executionMetricNumber(totalTestCases);
+      const manualCompletion = readExecutionMetric(data, "completion");
+      const manualCompletionNumber = executionMetricNumber(manualCompletion);
       const record: NormalizedProject["execution"][number] = {
         ...(editingExecution ?? { id: crypto.randomUUID(), area: value("area"), completion: null, bugs: [], notes: "", owner: "", poc: "" }),
         totalTestCases,
         testCasesExecuted,
-        testCasesPassed: readNumber(data, "testCasesPassed"),
-        blocked: readNumber(data, "blocked"),
+        testCasesPassed: readExecutionMetric(data, "testCasesPassed"),
+        blocked: readExecutionMetric(data, "blocked"),
         blockedReason: value("blockedReason"),
         etaToUnblock: editingExecution?.etaToUnblock ?? "",
         progressUpdateToUnblock: value("progressUpdateToUnblock"),
-        toDo: readNumber(data, "toDo"),
-        failed: readNumber(data, "failed"),
+        toDo: readExecutionMetric(data, "toDo"),
+        failed: readExecutionMetric(data, "failed"),
         exploratoryTests: value("exploratoryTests"),
-        completion: totalTestCases && testCasesExecuted !== null ? Math.min(1, testCasesExecuted / totalTestCases) : manualCompletion === null ? editingExecution?.completion ?? null : Math.min(100, manualCompletion) / 100,
+        completion: totalTestCasesNumber && testCasesExecutedNumber !== null ? Math.min(1, testCasesExecutedNumber / totalTestCasesNumber) : manualCompletion === null ? editingExecution?.completion ?? null : manualCompletionNumber === null ? manualCompletion : Math.min(100, manualCompletionNumber) / 100,
         bugs: editingExecution?.bugs ?? [],
         notes: value("notes"),
         owner: value("owner"),
@@ -318,7 +329,7 @@ function ProjectDetails() {
               <td className="sticky left-0 z-10 border-r border-slate-100 bg-white px-3 py-3 font-bold text-slate-700">{item.area}</td>
               <td className="px-3 py-3">{item.totalTestCases ?? "—"}</td>
               <td className="px-3 py-3">{item.testCasesExecuted ?? "—"}</td>
-              <td className="px-3 py-3">{displayPercent(executionCompletion(item))}</td>
+              <td className="px-3 py-3">{completionDisplay(item)}</td>
               <td className="px-3 py-3">{item.testCasesPassed ?? "—"}</td>
               <td className="px-3 py-3">{displayPercent(asPercent(item.testCasesPassed ?? null, item.totalTestCases ?? null))}</td>
               <td className="px-3 py-3">{item.blocked ?? "—"}</td>
@@ -365,15 +376,15 @@ function ProjectDetails() {
       {modal === "preparation" && <form onSubmit={saveRecord} className="grid gap-4 sm:grid-cols-2"><Field label="Preparation item"><input name="name" defaultValue={editingPreparation?.name ?? ""} required className={inputClass} /></Field><Field label="Status"><select name="status" defaultValue={editingPreparation?.status ?? "Yet to Start"} className={inputClass}>{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></Field><Field label="ETA for completion"><input name="eta" defaultValue={editingPreparation?.eta ?? ""} placeholder="e.g. 30/10/2026 or TBD" className={inputClass} /></Field><Field label="Blocked reason"><input name="blockedReason" defaultValue={editingPreparation?.blockedReason ?? ""} className={inputClass} /></Field><Field label="ETA to unblock"><input name="etaToUnblock" defaultValue={editingPreparation?.etaToUnblock ?? ""} placeholder="e.g. 30/10/2026 or TBD" className={inputClass} /></Field><Field label="Owner"><input name="owner" defaultValue={editingPreparation?.owner ?? ""} className={inputClass} /></Field><Field label="Comments" className="sm:col-span-2"><textarea name="comments" defaultValue={editingPreparation?.comments ?? ""} rows={3} className={`${inputClass} resize-y`} /></Field><FormFooter onCancel={closeModal} label={editingPreparation ? "Save item" : "Add item"} /></form>}
       {modal === "execution" && <form onSubmit={saveRecord} className="grid max-h-[70vh] gap-4 overflow-y-auto pr-1 sm:grid-cols-2">
         {!editingExecution && <Field label="Execution area"><input name="area" type="text" required placeholder="e.g. Functionality" className={inputClass} /></Field>}
-        <Field label="Total test cases"><input name="totalTestCases" type="number" min="0" defaultValue={editingExecution?.totalTestCases ?? ""} className={inputClass} /></Field>
-        <Field label="Test cases executed"><input name="testCasesExecuted" type="number" min="0" defaultValue={editingExecution?.testCasesExecuted ?? ""} className={inputClass} /></Field>
-        <Field label="Completion (%)"><input name="completion" type="number" min="0" max="100" defaultValue={editingExecution ? executionCompletion(editingExecution) ?? "" : ""} className={inputClass} /></Field>
-        <Field label="Test cases passed"><input name="testCasesPassed" type="number" min="0" defaultValue={editingExecution?.testCasesPassed ?? ""} className={inputClass} /></Field>
-        <Field label="Blocked"><input name="blocked" type="number" min="0" defaultValue={editingExecution?.blocked ?? ""} className={inputClass} /></Field>
+        <Field label="Total test cases"><input name="totalTestCases" type="text" defaultValue={editingExecution?.totalTestCases ?? ""} className={inputClass} /></Field>
+        <Field label="Test cases executed"><input name="testCasesExecuted" type="text" defaultValue={editingExecution?.testCasesExecuted ?? ""} className={inputClass} /></Field>
+        <Field label="Completion (%)"><input name="completion" type="text" defaultValue={editingExecution ? executionCompletion(editingExecution) ?? editingExecution.completion ?? "" : ""} className={inputClass} /></Field>
+        <Field label="Test cases passed"><input name="testCasesPassed" type="text" defaultValue={editingExecution?.testCasesPassed ?? ""} className={inputClass} /></Field>
+        <Field label="Blocked"><input name="blocked" type="text" defaultValue={editingExecution?.blocked ?? ""} className={inputClass} /></Field>
         <Field label="Blocked reason"><input name="blockedReason" defaultValue={editingExecution?.blockedReason ?? ""} className={inputClass} /></Field>
         <Field label="Progress update to unblock"><textarea name="progressUpdateToUnblock" defaultValue={editingExecution?.progressUpdateToUnblock ?? ""} rows={2} className="form-input resize-y" /></Field>
-        <Field label="To do"><input name="toDo" type="number" min="0" defaultValue={editingExecution?.toDo ?? ""} className={inputClass} /></Field>
-        <Field label="Test cases failed"><input name="failed" type="number" min="0" defaultValue={editingExecution?.failed ?? ""} className={inputClass} /></Field>
+        <Field label="To do"><input name="toDo" type="text" defaultValue={editingExecution?.toDo ?? ""} className={inputClass} /></Field>
+        <Field label="Test cases failed"><input name="failed" type="text" defaultValue={editingExecution?.failed ?? ""} className={inputClass} /></Field>
         <Field label="Exploratory tests added"><textarea name="exploratoryTests" defaultValue={editingExecution?.exploratoryTests ?? ""} rows={2} className="form-input resize-y" /></Field>
         <Field label="Additional comments" className="sm:col-span-2"><textarea name="notes" defaultValue={editingExecution?.notes ?? ""} rows={3} className="form-input resize-y" /></Field>
         <Field label="Task owner"><input name="owner" type="text" defaultValue={editingExecution?.owner ?? reportProject.owner} placeholder="Enter task owner" className={inputClass} /></Field>

@@ -39,23 +39,32 @@ export interface Blocker {
   notes: string;
 }
 
+export type ExecutionMetricValue = number | string | null;
+
+export const executionMetricNumber = (value: ExecutionMetricValue | undefined) => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string" || !value.trim()) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+};
+
 export interface ExecutionMetrics {
-  totalTestCases?: number | null;
-  testCasesExecuted?: number | null;
-  testCasesPassed?: number | null;
-  blocked?: number | null;
+  totalTestCases?: ExecutionMetricValue;
+  testCasesExecuted?: ExecutionMetricValue;
+  testCasesPassed?: ExecutionMetricValue;
+  blocked?: ExecutionMetricValue;
   blockedReason?: string;
   etaToUnblock?: string;
   progressUpdateToUnblock?: string;
-  toDo?: number | null;
-  failed?: number | null;
+  toDo?: ExecutionMetricValue;
+  failed?: ExecutionMetricValue;
   exploratoryTests?: string;
 }
 
 export interface ExecutionItem extends ExecutionMetrics {
   id: string;
   area: string;
-  completion: number | null;
+  completion: ExecutionMetricValue;
   bugs: string[];
   notes: string;
   owner: string;
@@ -290,7 +299,7 @@ export const statusTone = (status: string) => {
 };
 
 export const projectCompletion = (project: Project) => {
-  const values = project.execution.map((entry) => entry.completion).filter((value): value is number => value !== null);
+  const values = project.execution.map((entry) => entry.completion).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
   return values.length ? Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 100) : 0;
 };
 
