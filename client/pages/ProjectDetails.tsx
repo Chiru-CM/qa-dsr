@@ -83,6 +83,7 @@ function ProjectDetails() {
   const [highLevelCommentsText, setHighLevelCommentsText] = useState("");
   const [editingProjectNotes, setEditingProjectNotes] = useState(false);
   const [projectNotesText, setProjectNotesText] = useState("");
+  const [editingRiskId, setEditingRiskId] = useState<string | null>(null);
   const project = projects.find((item) => item.id === projectId);
   const projectSprint = sprints.find((sprint) => sprint.id === activeSprintId && sprint.projectIds.includes(projectId ?? "")) ?? sprints.find((sprint) => sprint.projectIds.includes(projectId ?? ""));
 
@@ -264,6 +265,15 @@ function ProjectDetails() {
     updateProject((current) => ({ ...current, risks: [...current.risks, record], lastUpdated: todayLabel() }));
   };
 
+  const saveRisk = (event: FormEvent<HTMLFormElement>, id: string) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const description = String(data.get("description") ?? "").trim();
+    const notes = String(data.get("notes") ?? "").trim();
+    updateProject((current) => ({ ...current, risks: current.risks.map((risk) => risk.id === id ? { ...risk, description, notes } : risk), lastUpdated: todayLabel() }));
+    setEditingRiskId(null);
+  };
+
   const removeRecord = (type: "blocker" | "execution" | "preparation" | "risk" | "defect", id: string) => updateProject((current) => {
     if (type === "blocker") return { ...current, blockers: current.blockers.filter((item) => item.id !== id) };
     if (type === "execution") return { ...current, execution: current.execution.filter((item) => item.id !== id) };
@@ -384,7 +394,7 @@ function ProjectDetails() {
 
 
     <div className="grid gap-5 xl:grid-cols-[1fr_0.8fr]">
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><SectionHeading title="Current project risks" description="Risks to monitor through the next reporting cycle." />{reportProject.risks.length ? <div className="space-y-2">{reportProject.risks.map((risk) => <div key={risk.id} className="rounded-xl bg-[#f7f9fc] p-4"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><ShieldAlert size={17} className="mt-0.5 shrink-0 text-[#37b9a5]" /><div className="min-w-0"><p className="text-sm font-semibold leading-6 text-slate-700">{risk.description}</p><p className="mt-1 whitespace-pre-wrap text-xs leading-6 text-slate-600">{risk.notes || "No additional notes."}</p></div></div><RowActions onEdit={() => openModal("risk", risk.id)} /></div><div className="mt-3 flex items-center gap-3"><StatusBadge status={risk.status} compact /><span className="text-[11px] font-medium text-slate-400">Owner: {risk.owner || "Unassigned"}</span></div></div>)}</div> : <form onSubmit={addRisk} className="rounded-xl bg-[#f7f9fc] p-4"><ShieldAlert size={17} className="text-[#37b9a5]" /><div className="mt-3 grid gap-3 sm:grid-cols-2"><Field label="Risk description" className="sm:col-span-2"><input name="description" required className={inputClass} /></Field><Field label="Additional notes" className="sm:col-span-2"><textarea name="notes" rows={2} className={`${inputClass} resize-y`} /></Field></div><div className="mt-3 flex justify-end"><button className="rounded-lg bg-[#10263d] px-3 py-2 text-xs font-bold text-white">Save</button></div></form>}</section>
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><SectionHeading title="Current project risks" description="Risks to monitor through the next reporting cycle." />{reportProject.risks.length ? <div className="space-y-2">{reportProject.risks.map((risk) => <div key={risk.id} className="rounded-xl bg-[#f7f9fc] p-4">{editingRiskId === risk.id ? <form onSubmit={(event) => saveRisk(event, risk.id)} className="space-y-3"><div className="flex items-start gap-3"><ShieldAlert size={17} className="mt-0.5 shrink-0 text-[#37b9a5]" /><div className="grid min-w-0 flex-1 gap-3"><Field label="Risk description"><input name="description" defaultValue={risk.description} required className={inputClass} /></Field><Field label="Additional notes"><textarea name="notes" defaultValue={risk.notes} rows={3} className={`${inputClass} resize-y`} /></Field></div></div><div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingRiskId(null)} className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100">Cancel</button><button className="rounded-lg bg-[#10263d] px-3 py-2 text-xs font-bold text-white">Save</button></div></form> : <><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><ShieldAlert size={17} className="mt-0.5 shrink-0 text-[#37b9a5]" /><div className="min-w-0"><p className="text-sm font-semibold leading-6 text-slate-700">{risk.description}</p><p className="mt-1 whitespace-pre-wrap text-xs leading-6 text-slate-600">{risk.notes || "No additional notes."}</p></div></div><RowActions onEdit={() => setEditingRiskId(risk.id)} /></div><div className="mt-3 flex items-center gap-3"><StatusBadge status={risk.status} compact /><span className="text-[11px] font-medium text-slate-400">Owner: {risk.owner || "Unassigned"}</span></div></>}</div>)}</div> : <form onSubmit={addRisk} className="rounded-xl bg-[#f7f9fc] p-4"><ShieldAlert size={17} className="text-[#37b9a5]" /><div className="mt-3 grid gap-3 sm:grid-cols-2"><Field label="Risk description" className="sm:col-span-2"><input name="description" required className={inputClass} /></Field><Field label="Additional notes" className="sm:col-span-2"><textarea name="notes" rows={2} className={`${inputClass} resize-y`} /></Field></div><div className="mt-3 flex justify-end"><button className="rounded-lg bg-[#10263d] px-3 py-2 text-xs font-bold text-white">Save</button></div></form>}</section>
       <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]">
         <SectionHeading title="Notes" description="High-level context for the current DSR." />
         {editingProjectNotes ? <form onSubmit={saveProjectNotes} className="mt-4 space-y-3">
