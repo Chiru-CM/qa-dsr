@@ -6,10 +6,9 @@ import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, T
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
 import { Modal } from "@/components/dsr/Modal";
 import { EmptyState, PageTitle, ProgressBar, SectionHeading, StatusBadge } from "@/components/dsr/DsrPrimitives";
-import { executionMetricNumber, normalizeProject, statusOptions, type Blocker, type Defect, type DefectSeverity, type DefectStatus, type ExecutionItem, type ExecutionMetricValue, type NormalizedProject, type PreparationItem, type Project, type RecordStatus, type Risk, type StageStatus } from "@/lib/dsr-data";
+import { executionMetricNumber, normalizeProject, statusOptions, type Blocker, type Defect, type DefectSeverity, type DefectStatus, type ExecutionItem, type ExecutionMetricValue, type NormalizedProject, type PreparationItem, type Project, type StageStatus } from "@/lib/dsr-data";
 
-type ModalType = "blocker" | "execution" | "risk" | "project" | "stage" | "preparation" | "defect" | null;
-const recordStatuses: RecordStatus[] = ["Open", "Blocked", "Monitoring", "Resolved", "Deferred"];
+type ModalType = "blocker" | "execution" | "project" | "stage" | "preparation" | "defect" | null;
 const defectStatuses: DefectStatus[] = ["Open", "In Progress", "Development", "Fixed / In Verification", "Closed"];
 const defectSeverities: DefectSeverity[] = ["P1", "P2", "P3"];
 const defaultStageNames = ["Exploratory", "TC Design", "Functionality Execution", "Non Functionality Execution", "Automation- Print", "Automation- Scan"];
@@ -83,7 +82,8 @@ function ProjectDetails() {
   const [highLevelCommentsText, setHighLevelCommentsText] = useState("");
   const [editingProjectNotes, setEditingProjectNotes] = useState(false);
   const [projectNotesText, setProjectNotesText] = useState("");
-  const [editingRiskId, setEditingRiskId] = useState<string | null>(null);
+  const [editingRiskSummary, setEditingRiskSummary] = useState(false);
+  const [riskSummaryText, setRiskSummaryText] = useState("");
   const project = projects.find((item) => item.id === projectId);
   const projectSprint = sprints.find((sprint) => sprint.id === activeSprintId && sprint.projectIds.includes(projectId ?? "")) ?? sprints.find((sprint) => sprint.projectIds.includes(projectId ?? ""));
 
@@ -97,7 +97,6 @@ function ProjectDetails() {
   const reportProject = normalizeProject(project);
   const editingBlocker = reportProject.blockers.find((item) => item.id === editingId);
   const editingExecution = reportProject.execution.find((item) => item.id === editingId);
-  const editingRisk = reportProject.risks.find((item) => item.id === editingId);
   const editingPreparation = reportProject.preparation.find((item) => item.id === editingId);
   const editingDefect = reportProject.defects.find((item) => item.id === editingId);
   const visibleStages = [
@@ -195,6 +194,18 @@ function ProjectDetails() {
     setEditingProjectNotes(false);
   };
 
+  const beginEditingRiskSummary = () => {
+    setRiskSummaryText(reportProject.riskSummary);
+    setEditingRiskSummary(true);
+  };
+
+  const saveRiskSummary = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const riskSummary = String(new FormData(event.currentTarget).get("riskSummary") ?? "").trim();
+    updateProject((current) => ({ ...current, riskSummary, lastUpdated: todayLabel() }));
+    setEditingRiskSummary(false);
+  };
+
   const addCustomStage = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -251,38 +262,17 @@ function ProjectDetails() {
       const record: Defect = { id: value("id"), title: value("title"), impactedTestCases: value("impactedTestCases"), status: value("status") as DefectStatus, severity: value("severity") as DefectSeverity, comments: value("comments"), owner: value("owner"), poc: value("poc"), link: value("link") };
       updateProject((current) => ({ ...current, defects: editingDefect ? current.defects.map((item) => item.id === editingDefect.id ? record : item) : [...current.defects, record], lastUpdated: todayLabel() }));
     }
-    if (modal === "risk") {
-      const record: Risk = { id: editingRisk?.id ?? crypto.randomUUID(), description: value("description"), notes: value("notes"), status: value("status") as RecordStatus, owner: value("owner") };
-      updateProject((current) => ({ ...current, risks: editingRisk ? current.risks.map((item) => item.id === editingRisk.id ? record : item) : [...current.risks, record], lastUpdated: todayLabel() }));
-    }
     closeModal();
   };
 
-  const addRisk = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const record: Risk = { id: crypto.randomUUID(), description: String(data.get("description") ?? "").trim(), notes: String(data.get("notes") ?? "").trim(), status: "Open", owner: "" };
-    updateProject((current) => ({ ...current, risks: [...current.risks, record], lastUpdated: todayLabel() }));
-  };
-
-  const saveRisk = (event: FormEvent<HTMLFormElement>, id: string) => {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const description = String(data.get("description") ?? "").trim();
-    const notes = String(data.get("notes") ?? "").trim();
-    updateProject((current) => ({ ...current, risks: current.risks.map((risk) => risk.id === id ? { ...risk, description, notes } : risk), lastUpdated: todayLabel() }));
-    setEditingRiskId(null);
-  };
-
-  const removeRecord = (type: "blocker" | "execution" | "preparation" | "risk" | "defect", id: string) => updateProject((current) => {
+  const removeRecord = (type: "blocker" | "execution" | "preparation" | "defect", id: string) => updateProject((current) => {
     if (type === "blocker") return { ...current, blockers: current.blockers.filter((item) => item.id !== id) };
     if (type === "execution") return { ...current, execution: current.execution.filter((item) => item.id !== id) };
     if (type === "preparation") return { ...current, preparation: current.preparation.filter((item) => item.id !== id), lastUpdated: todayLabel() };
-    if (type === "risk") return { ...current, risks: current.risks.filter((item) => item.id !== id) };
     return { ...current, defects: current.defects.filter((item) => item.id !== id) };
   });
 
-  const modalTitle = modal === "blocker" ? `${editingBlocker ? "Edit" : "Add"} blocker` : modal === "execution" ? `${editingExecution ? "Edit" : "Add"} execution item` : modal === "preparation" ? `${editingPreparation ? "Edit" : "Add"} preparation item` : modal === "defect" ? `${editingDefect ? "Edit" : "Add"} defect` : modal === "stage" ? "Add status item" : `${editingRisk ? "Edit" : "Add"} project risk`;
+  const modalTitle = modal === "blocker" ? `${editingBlocker ? "Edit" : "Add"} blocker` : modal === "execution" ? `${editingExecution ? "Edit" : "Add"} execution item` : modal === "preparation" ? `${editingPreparation ? "Edit" : "Add"} preparation item` : modal === "defect" ? `${editingDefect ? "Edit" : "Add"} defect` : "Add status item";
 
   return <div className="mx-auto max-w-[1440px]">
     <Link to={location.state?.fromSprint ? "/" : "/projects"} className="mb-5 inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 transition hover:text-[#218f82]"><ArrowLeft size={14} />{location.state?.fromSprint ? "Back to sprint overview" : "Back to all projects"}</Link>
@@ -394,7 +384,16 @@ function ProjectDetails() {
 
 
     <div className="grid gap-5 xl:grid-cols-[1fr_0.8fr]">
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]"><SectionHeading title="Current project risks" description="Risks to monitor through the next reporting cycle." />{reportProject.risks.length ? <div className="space-y-2">{reportProject.risks.map((risk) => <div key={risk.id} className="rounded-xl bg-[#f7f9fc] p-4">{editingRiskId === risk.id ? <form onSubmit={(event) => saveRisk(event, risk.id)} className="space-y-3"><div className="flex items-start gap-3"><ShieldAlert size={17} className="mt-0.5 shrink-0 text-[#37b9a5]" /><div className="grid min-w-0 flex-1 gap-3"><Field label="Risk description"><input name="description" defaultValue={risk.description} required className={inputClass} /></Field><Field label="Additional notes"><textarea name="notes" defaultValue={risk.notes} rows={3} className={`${inputClass} resize-y`} /></Field></div></div><div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingRiskId(null)} className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100">Cancel</button><button className="rounded-lg bg-[#10263d] px-3 py-2 text-xs font-bold text-white">Save</button></div></form> : <><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><ShieldAlert size={17} className="mt-0.5 shrink-0 text-[#37b9a5]" /><div className="min-w-0"><p className="text-sm font-semibold leading-6 text-slate-700">{risk.description}</p><p className="mt-1 whitespace-pre-wrap text-xs leading-6 text-slate-600">{risk.notes || "No additional notes."}</p></div></div><RowActions onEdit={() => setEditingRiskId(risk.id)} /></div><div className="mt-3 flex items-center gap-3"><StatusBadge status={risk.status} compact /><span className="text-[11px] font-medium text-slate-400">Owner: {risk.owner || "Unassigned"}</span></div></>}</div>)}</div> : <form onSubmit={addRisk} className="rounded-xl bg-[#f7f9fc] p-4"><ShieldAlert size={17} className="text-[#37b9a5]" /><div className="mt-3 grid gap-3 sm:grid-cols-2"><Field label="Risk description" className="sm:col-span-2"><input name="description" required className={inputClass} /></Field><Field label="Additional notes" className="sm:col-span-2"><textarea name="notes" rows={2} className={`${inputClass} resize-y`} /></Field></div><div className="mt-3 flex justify-end"><button className="rounded-lg bg-[#10263d] px-3 py-2 text-xs font-bold text-white">Save</button></div></form>}</section>
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]">
+        <SectionHeading title="Current project risks" description="Risks to monitor through the next reporting cycle." />
+        {editingRiskSummary ? <form onSubmit={saveRiskSummary} className="mt-4 space-y-3">
+          <textarea name="riskSummary" aria-label="Current project risks" value={riskSummaryText} onChange={(event) => setRiskSummaryText(event.target.value)} rows={5} className={`${inputClass} !h-auto min-h-[120px] resize-y`} />
+          <div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingRiskSummary(false)} className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100">Cancel</button><button className="rounded-lg bg-[#10263d] px-3 py-2 text-xs font-bold text-white">Save</button></div>
+        </form> : <>
+          <div className="rounded-xl bg-[#f7f9fc] p-4"><ShieldAlert size={17} className="text-[#37b9a5]" /><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">{reportProject.riskSummary || "No project risks recorded."}</p></div>
+          <button type="button" onClick={beginEditingRiskSummary} className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-[#218f82] hover:underline"><Pencil size={13} />Edit project risks</button>
+        </>}
+      </section>
       <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]">
         <SectionHeading title="Notes" description="High-level context for the current DSR." />
         {editingProjectNotes ? <form onSubmit={saveProjectNotes} className="mt-4 space-y-3">
@@ -411,7 +410,7 @@ function ProjectDetails() {
 
     <Modal open={modal === "project"} onClose={closeModal} title="Edit project report" description="Update the report header and project context." wide><form onSubmit={saveProject} className="grid gap-4 sm:grid-cols-2"><Field label="Project name"><input name="name" defaultValue={reportProject.name} required className={inputClass} /></Field><p className="self-center text-xs text-slate-500 sm:col-span-2">Sprint dates are managed in the sprint configuration.</p><Field label="Firmware version"><input name="firmwareVersion" defaultValue={reportProject.report.firmwareVersion} className={inputClass} /></Field><Field label="Solution version"><input name="solutionVersion" defaultValue={reportProject.report.solutionVersion} className={inputClass} /></Field><Field label="Targeted devices" className="sm:col-span-2"><textarea name="targetedDevices" defaultValue={reportProject.report.targetedDevices} rows={2} className={`${inputClass} resize-y`} /></Field><div className="sm:col-span-2 rounded-lg border border-slate-100 p-3"><h3 className="text-xs font-bold text-slate-700">Status items</h3>{visibleStages.length ? <div className="mt-2 divide-y divide-slate-100">{visibleStages.map((stage) => <div key={stage.id} className="flex items-center justify-between gap-3 py-2"><span className="text-xs font-medium text-slate-600">{stage.name}</span><button type="button" onClick={() => deleteStatusItem(stage)} aria-label={`Delete ${stage.name} status item`} className="rounded-md px-2 py-1 text-xs font-semibold text-[#c65e52] hover:bg-[#fff0ed]">Delete</button></div>)}</div> : <p className="mt-2 text-xs text-slate-400">No status items.</p>}</div><FormFooter onCancel={closeModal} label="Save changes" /></form></Modal>
 
-    <Modal open={modal === "preparation" || modal === "execution" || modal === "risk" || modal === "blocker" || modal === "defect"} onClose={closeModal} title={modalTitle} description="Keep the project report current with the latest execution details." wide>
+    <Modal open={modal === "preparation" || modal === "execution" || modal === "blocker" || modal === "defect"} onClose={closeModal} title={modalTitle} description="Keep the project report current with the latest execution details." wide>
       {modal === "preparation" && <form onSubmit={saveRecord} className="grid gap-4 sm:grid-cols-2"><Field label="Preparation item"><input name="name" defaultValue={editingPreparation?.name ?? ""} required className={inputClass} /></Field><Field label="Status"><select name="status" defaultValue={editingPreparation?.status ?? "Yet to Start"} className={inputClass}>{statusOptions.map((option) => <option key={option}>{option}</option>)}</select></Field><Field label="ETA for completion"><input name="eta" defaultValue={editingPreparation?.eta ?? ""} placeholder="e.g. 30/10/2026 or TBD" className={inputClass} /></Field><Field label="Blocked reason"><input name="blockedReason" defaultValue={editingPreparation?.blockedReason ?? ""} className={inputClass} /></Field><Field label="ETA to unblock"><input name="etaToUnblock" defaultValue={editingPreparation?.etaToUnblock ?? ""} placeholder="e.g. 30/10/2026 or TBD" className={inputClass} /></Field><Field label="Owner"><input name="owner" defaultValue={editingPreparation?.owner ?? ""} className={inputClass} /></Field><Field label="Comments" className="sm:col-span-2"><textarea name="comments" defaultValue={editingPreparation?.comments ?? ""} rows={3} className={`${inputClass} resize-y`} /></Field><FormFooter onCancel={closeModal} label={editingPreparation ? "Save item" : "Add item"} /></form>}
       {modal === "execution" && <form onSubmit={saveRecord} className="grid max-h-[70vh] gap-4 overflow-y-auto pr-1 sm:grid-cols-2">
         {!editingExecution && <Field label="Execution area"><input name="area" type="text" required placeholder="e.g. Functionality" className={inputClass} /></Field>}
@@ -431,7 +430,6 @@ function ProjectDetails() {
         <FormFooter onCancel={closeModal} label={editingExecution ? "Save item" : "Add item"} />
       </form>}
       {modal === "blocker" && <form onSubmit={saveRecord} className="grid gap-4 sm:grid-cols-2"><Field label="Description" className="sm:col-span-2"><input name="description" defaultValue={editingBlocker?.description ?? ""} required className={inputClass} /></Field><Field label="Impacted test cases (%)"><input name="impact" type="number" min="0" max="100" defaultValue={editingBlocker?.impact ?? 0} className={inputClass} /></Field><Field label="Current status"><input name="currentStatus" defaultValue={editingBlocker?.currentStatus ?? ""} className={inputClass} /></Field><Field label="Additional notes" className="sm:col-span-2"><textarea name="notes" defaultValue={editingBlocker?.notes ?? ""} rows={3} className={`${inputClass} resize-y`} /></Field><FormFooter onCancel={closeModal} label={editingBlocker ? "Save blocker" : "Add blocker"} /></form>}
-      {modal === "risk" && <form onSubmit={saveRecord} className="grid gap-4 sm:grid-cols-2"><Field label="Risk description" className="sm:col-span-2"><input name="description" defaultValue={editingRisk?.description ?? ""} required className={inputClass} /></Field><Field label="Status"><select name="status" defaultValue={editingRisk?.status ?? "Open"} className={inputClass}>{recordStatuses.map((status) => <option key={status}>{status}</option>)}</select></Field><Field label="Owner"><input name="owner" defaultValue={editingRisk?.owner ?? ""} className={inputClass} /></Field><Field label="Additional notes" className="sm:col-span-2"><textarea name="notes" defaultValue={editingRisk?.notes ?? ""} rows={3} className={`${inputClass} resize-y`} /></Field><FormFooter onCancel={closeModal} label={editingRisk ? "Save risk" : "Add risk"} /></form>}
       {modal === "defect" && <form onSubmit={saveRecord} className="grid max-h-[70vh] gap-4 overflow-y-auto pr-1 sm:grid-cols-2"><Field label="Defect ID"><input name="id" defaultValue={editingDefect?.id ?? ""} required className={inputClass} /></Field><Field label="Severity"><select name="severity" defaultValue={editingDefect?.severity ?? "P2"} className={inputClass}>{defectSeverities.map((severity) => <option key={severity}>{severity}</option>)}</select></Field><Field label="Defect title" className="sm:col-span-2"><input name="title" defaultValue={editingDefect?.title ?? ""} required className={inputClass} /></Field><Field label="Test cases impacted"><textarea name="impactedTestCases" defaultValue={editingDefect?.impactedTestCases ?? ""} rows={2} className={`${inputClass} resize-y`} /></Field><Field label="Status"><select name="status" defaultValue={editingDefect?.status ?? "Open"} className={inputClass}>{defectStatuses.map((status) => <option key={status}>{status}</option>)}</select></Field><Field label="Task owner"><input name="owner" defaultValue={editingDefect?.owner ?? ""} className={inputClass} /></Field><Field label="POC / SL"><input name="poc" defaultValue={editingDefect?.poc ?? ""} className={inputClass} /></Field><Field label="Defect link" className="sm:col-span-2"><input name="link" type="url" defaultValue={editingDefect?.link ?? ""} placeholder="https://…" className={inputClass} /></Field><Field label="Comments" className="sm:col-span-2"><textarea name="comments" defaultValue={editingDefect?.comments ?? ""} rows={3} className={`${inputClass} resize-y`} /></Field><FormFooter onCancel={closeModal} label={editingDefect ? "Save defect" : "Add defect"} /></form>}
     </Modal>
 

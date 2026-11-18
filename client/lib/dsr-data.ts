@@ -125,6 +125,7 @@ export interface Project {
   blockers: Blocker[];
   execution: ExecutionItem[];
   risks: Risk[];
+  riskSummary?: string;
   notes: string;
   report?: ProjectReport;
   preparation?: PreparationItem[];
@@ -154,7 +155,7 @@ export interface DailySnapshot {
 }
 
 export type NormalizedExecutionItem = ExecutionItem & Required<ExecutionMetrics>;
-export type NormalizedProject = Omit<Project, "report" | "preparation" | "execution" | "defects" | "validatedDefects" | "bugIds" | "highLevelComments" | "hiddenStages" | "additionalNotes"> & {
+export type NormalizedProject = Omit<Project, "report" | "preparation" | "execution" | "defects" | "validatedDefects" | "bugIds" | "highLevelComments" | "hiddenStages" | "additionalNotes" | "riskSummary"> & {
   report: ProjectReport;
   preparation: PreparationItem[];
   execution: NormalizedExecutionItem[];
@@ -164,6 +165,7 @@ export type NormalizedProject = Omit<Project, "report" | "preparation" | "execut
   highLevelComments: string;
   hiddenStages: string[];
   additionalNotes: string;
+  riskSummary: string;
 };
 
 const emptyProjectReport: ProjectReport = {
@@ -245,6 +247,7 @@ export function normalizeProject(project: Project): NormalizedProject {
     highLevelComments: project.highLevelComments ?? "",
     hiddenStages: project.hiddenStages ?? [],
     additionalNotes: project.additionalNotes ?? "",
+    riskSummary: project.riskSummary ?? project.risks.map((risk) => [risk.description, risk.notes].filter(Boolean).join("\n")).join("\n\n"),
   };
 }
 

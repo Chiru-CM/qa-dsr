@@ -41,6 +41,7 @@ const projectSchema = z.object({
     exploratoryTests: z.string().max(10000).optional(),
   })),
   risks: z.array(z.object({ id: idSchema, description: z.string().max(2000), notes: z.string().max(10000), status: recordStatusSchema, owner: z.string().max(200) })),
+  riskSummary: z.string().max(20000).optional(),
   notes: z.string().max(20000),
   report: z.object({
     sprintStartDate: z.string().max(40),
