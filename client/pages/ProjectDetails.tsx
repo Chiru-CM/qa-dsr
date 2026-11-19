@@ -321,10 +321,10 @@ function ProjectDetails() {
     <section className="mb-5 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_3px_15px_rgba(20,40,70,0.03)]">
       <SectionHeading title="Test execution summary" description="Track case counts, outcomes, completion, ownership, and unblock progress." action={<button onClick={() => openModal("execution")} className="inline-flex items-center gap-1.5 rounded-lg bg-[#eaf8f5] px-3 py-2 text-xs font-bold text-[#218f82] hover:bg-[#d9f3ee]"><Plus size={14} />Add execution item</button>} />
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[2200px] text-left">
+        <table className="w-full min-w-[2200px] text-center">
           <thead>
             <tr className="border-b border-slate-100 bg-[#fff8e8] text-[9px] font-bold uppercase tracking-[0.08em] text-slate-500">
-              <th className="sticky left-0 z-20 border-r border-slate-100 bg-[#fff8e8] px-3 py-3">Execution area</th>
+              <th className="sticky left-0 z-20 border-r border-slate-100 bg-[#fff8e8] px-3 py-3 text-left">Execution area</th>
               <th className="px-3 py-3">Total No. Test cases</th>
               <th className="px-3 py-3">Test cases Executed</th>
               <th className="px-3 py-3">% of Completion</th>
@@ -347,7 +347,7 @@ function ProjectDetails() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {reportProject.execution.map((item) => <tr key={item.id} className="align-top text-[11px] text-slate-600">
-              <td className="sticky left-0 z-10 border-r border-slate-100 bg-white px-3 py-3 font-bold text-slate-700">{item.area}</td>
+              <td className="sticky left-0 z-10 border-r border-slate-100 bg-white px-3 py-3 text-left font-bold text-slate-700">{item.area}</td>
               <td className="px-3 py-3">{item.totalTestCases ?? "—"}</td>
               <td className="px-3 py-3">{item.testCasesExecuted ?? "—"}</td>
               <td className="px-3 py-3">{completionDisplay(item)}</td>
@@ -365,7 +365,7 @@ function ProjectDetails() {
               <td className="max-w-[240px] whitespace-pre-wrap px-3 py-3">{item.notes || "—"}</td>
               <td className="px-3 py-3">{item.owner || "—"}</td>
               <td className="px-3 py-3">{item.poc || "—"}</td>
-              <td className="px-3 py-3"><RowActions onEdit={() => openModal("execution", item.id)} onDelete={() => removeRecord("execution", item.id)} /></td>
+              <td className="px-3 py-3 [&>div]:justify-center"><RowActions onEdit={() => openModal("execution", item.id)} onDelete={() => removeRecord("execution", item.id)} /></td>
             </tr>)}
           </tbody>
         </table>
