@@ -5,7 +5,7 @@ import { useOutletContext } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
 import { PageTitle, SectionHeading, StatusBadge } from "@/components/dsr/DsrPrimitives";
-import { executionMetricNumber, normalizeProject, projectCompletion, type ExecutionMetricValue, type Project, type Sprint } from "@/lib/dsr-data";
+import { executionMetricNumber, normalizeProject, projectCompletion, projectExecutionStatus, sprintExecutionStatus, type ExecutionMetricValue, type Project, type Sprint } from "@/lib/dsr-data";
 
 const localDate = () => {
   const now = new Date();
@@ -22,10 +22,11 @@ const latestSprintDate = (sprint: Sprint) => {
 };
 
 const executionStatus = (project: Project) => {
-  if (project.status === "Blocked" || project.status === "Failed") return "Needs attention";
-  if (project.status === "Completed") return "Completed";
-  if (project.status === "Yet to Start") return "Not started";
-  return "In progress";
+  const status = projectExecutionStatus(project);
+  if (status === "Blocked") return "Needs attention";
+  if (status === "Not Started") return "Not started";
+  if (status === "In Progress") return "In progress";
+  return status;
 };
 
 const statusColors: Record<string, string> = {
@@ -189,10 +190,11 @@ export default function Reports() {
   }, [selectedSprintId]);
 
   const counts = useMemo(() => ({
-    completed: reportProjects.filter((project) => project.status === "Completed").length,
-    inProgress: reportProjects.filter((project) => project.status === "In Progress").length,
-    attention: reportProjects.filter((project) => project.status === "Blocked" || project.status === "Failed" || project.blockers.some((blocker) => !["Resolved", "Deferred"].includes(blocker.currentStatus))).length,
+    completed: reportProjects.filter((project) => projectExecutionStatus(project) === "Completed").length,
+    inProgress: reportProjects.filter((project) => projectExecutionStatus(project) === "In Progress").length,
+    attention: reportProjects.filter((project) => projectExecutionStatus(project) === "Blocked" || project.blockers.some((blocker) => !["Resolved", "Deferred"].includes(blocker.currentStatus))).length,
   }), [reportProjects]);
+  const reportSprintStatus = sprintExecutionStatus(reportProjects);
   const averageCompletion = reportProjects.length ? Math.round(reportProjects.reduce((total, project) => total + projectCompletion(project), 0) / reportProjects.length) : 0;
 
   const selectSprint = (sprintId: string) => {
@@ -248,7 +250,7 @@ export default function Reports() {
         <div className="pointer-events-none absolute -right-12 -top-24 h-72 w-72 rounded-full border-[38px] border-white/[0.045]" /><div className="pointer-events-none absolute -bottom-28 right-28 h-56 w-56 rounded-full border-[28px] border-[#37c7b1]/10" />
         <div className="relative flex flex-col justify-between gap-7 lg:flex-row lg:items-end">
           <div><div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.07] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[#8ee2d4]"><span className="h-1.5 w-1.5 rounded-full bg-[#37c7b1]" />QALens · Daily Sprint Pulse</div><h2 className="max-w-2xl text-2xl font-bold leading-tight tracking-tight text-white md:text-4xl">{selectedSprint?.name}</h2><p className="mt-2 flex items-center gap-2 text-sm font-medium text-slate-300"><CalendarDays size={15} className="text-[#7fd9ca]" />{formatDate(selectedDate, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}<span className="text-slate-500">·</span>{selectedSprint ? `${formatDate(selectedSprint.startDate)} – ${formatDate(selectedSprint.endDate)}` : ""}</p></div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 lg:min-w-[190px]"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Sprint status</p><div className="mt-2 flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#37c7b1]" /><span className="text-sm font-bold text-white">{snapshot?.sprintStatus ?? selectedSprint?.status ?? "In Progress"}</span></div><p className="mt-1 flex items-center gap-1.5 text-[10px] text-slate-400"><Clock3 size={11} />{snapshot ? "Snapshot saved" : "Live project data"}</p></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 lg:min-w-[190px]"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Sprint status</p><div className="mt-2 flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#37c7b1]" /><span className="text-sm font-bold text-white">{reportSprintStatus}</span></div><p className="mt-1 flex items-center gap-1.5 text-[10px] text-slate-400"><Clock3 size={11} />{snapshot ? "Snapshot saved" : "Live project data"}</p></div>
         </div>
         <div className="sprint-report-summary relative mt-7 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3.5"><p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Projects</p><p className="mt-1 text-2xl font-bold text-white">{reportProjects.length}</p></div>

@@ -1,4 +1,6 @@
 export type SprintStatus = "Not Started" | "In Progress" | "Completed" | "Blocked";
+export type ProjectExecutionStatus = "Completed" | "In Progress" | "Blocked" | "Not Started";
+export const sprintExecutionCategories = ["Functionality Execution", "Non Functionality Execution", "Automation- Print", "Automation- Scan"] as const;
 
 export interface Sprint {
   id: string;
@@ -144,6 +146,23 @@ export interface Project {
 export interface Workspace {
   name: string;
 }
+
+export const projectExecutionStatus = (project: Project): ProjectExecutionStatus => {
+  const normalize = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
+  const statuses = sprintExecutionCategories.map((category) => project.stages.find((stage) => normalize(stage.name) === normalize(category))?.status ?? "N/A");
+  if (statuses.every((status) => status === "Completed" || status === "Complete")) return "Completed";
+  if (statuses.some((status) => status === "Blocked" || status === "Failed")) return "Blocked";
+  if (statuses.every((status) => ["Yet to Start", "Not Yet Started", "N/A"].includes(status))) return "Not Started";
+  return "In Progress";
+};
+
+export const sprintExecutionStatus = (projects: Project[]): SprintStatus => {
+  const statuses = projects.map(projectExecutionStatus);
+  if (statuses.length && statuses.every((status) => status === "Completed")) return "Completed";
+  if (statuses.includes("Blocked")) return "Blocked";
+  if (!statuses.length || statuses.every((status) => status === "Not Started")) return "Not Started";
+  return "In Progress";
+};
 
 export interface DailySnapshot {
   sprintId: string;
