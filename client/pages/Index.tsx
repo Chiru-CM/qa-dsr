@@ -4,14 +4,9 @@ import { Link, useOutletContext } from "react-router-dom";
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
 import { Modal } from "@/components/dsr/Modal";
 import { EmptyState, PageTitle, StatusBadge } from "@/components/dsr/DsrPrimitives";
-import { statusOptions, type Project, type ProjectStatus, type Sprint, type StageStatus } from "@/lib/dsr-data";
+import { projectExecutionStatus, sprintExecutionCategories, statusOptions, type Project, type ProjectExecutionStatus, type ProjectStatus, type Sprint, type StageStatus } from "@/lib/dsr-data";
 
-const sprintCategories = [
-  "Functionality Execution",
-  "Non Functionality Execution",
-  "Automation- Print",
-  "Automation- Scan",
-];
+const sprintCategories = sprintExecutionCategories;
 const defaultStageNames = ["Exploratory", "TC Design", ...sprintCategories];
 
 const normalize = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
@@ -24,7 +19,7 @@ const formatDate = (value: string) => new Intl.DateTimeFormat("en-US", {
 const formatDateRange = (start: string, end: string) => `${formatDate(start)} – ${formatDate(end)}`;
 const todayLabel = () => new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
-type ExecutionSummaryStatus = "Completed" | "In Progress" | "Blocked" | "Not Started";
+type ExecutionSummaryStatus = ProjectExecutionStatus;
 
 const executionCardTones: Record<ExecutionSummaryStatus, string> = {
   Completed: "border-[#bce8d8] bg-[#f4fbf8] shadow-[0_2px_10px_rgba(55,185,165,0.08)] hover:border-[#37b9a5]",
@@ -39,14 +34,6 @@ const executionStatusTextTones: Record<ExecutionSummaryStatus, string> = {
   Blocked: "text-[#c65e52]",
   "Not Started": "text-slate-500",
 };
-
-function projectExecutionStatus(project: Project): ExecutionSummaryStatus {
-  const statuses = sprintCategories.map((category) => project.stages.find((stage) => normalize(stage.name) === normalize(category))?.status ?? "N/A");
-  if (statuses.every((status) => status === "Completed" || status === "Complete")) return "Completed";
-  if (statuses.some((status) => status === "Blocked" || status === "Failed")) return "Blocked";
-  if (statuses.every((status) => ["Yet to Start", "Not Yet Started", "N/A"].includes(status))) return "Not Started";
-  return "In Progress";
-}
 
 function ProjectStatusGrid({ projects, onRemoveProject }: { projects: Project[]; onRemoveProject: (projectId: string) => void }) {
   if (!projects.length) {

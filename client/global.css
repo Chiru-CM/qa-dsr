@@ -176,6 +176,11 @@
     margin: 0 !important;
   }
 
+  .sprint-report-print-area,
+  .sprint-report-project-list {
+    display: block !important;
+  }
+
   .sprint-report-print-area {
     gap: 8px !important;
     padding: 0 !important;
@@ -241,24 +246,65 @@
 
   .sprint-report-card section {
     padding: 10px !important;
-  }
-
-  .sprint-report-card section > .mb-3 {
-    margin-bottom: 6px !important;
-  }
-
-  .sprint-report-field-card {
-    padding: 8px !important;
     break-inside: auto;
     page-break-inside: auto;
   }
 
-  .sprint-report-field-card > h5,
-  .sprint-report-card table tr {
+  .sprint-report-card section > .mb-3 {
+    margin-bottom: 6px !important;
     break-inside: avoid;
-    break-after: avoid;
+    break-after: avoid-page;
     page-break-inside: avoid;
     page-break-after: avoid;
+  }
+
+  .sprint-report-field-card {
+    padding: 8px !important;
+    overflow: visible !important;
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .sprint-report-field-card > h5 {
+    break-inside: avoid;
+    break-after: avoid-page;
+    page-break-inside: avoid;
+    page-break-after: avoid;
+  }
+
+  .sprint-report-card table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .sprint-report-card .overflow-hidden {
+    overflow: visible !important;
+  }
+
+  .sprint-report-field-card > .grid {
+    display: block !important;
+  }
+
+  .sprint-report-field-card > .grid > div + div {
+    margin-top: 8px !important;
+  }
+
+  .sprint-report-card table {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .sprint-report-charts {
+    display: block !important;
+  }
+
+  .sprint-report-charts > section + section {
+    margin-top: 8px !important;
+  }
+
+  .sprint-report-card section.sprint-report-chart {
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
   }
 
   .sprint-report-card th,
