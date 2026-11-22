@@ -82,7 +82,8 @@ export interface PreparationItem {
   comments: string;
 }
 
-export type DefectSeverity = "P1" | "P2" | "P3";
+export type DefectSeverity = "Low" | "Medium" | "High";
+export type DefectPriority = "P1" | "P2" | "P3";
 export type DefectStatus = "Open" | "In Progress" | "Development" | "Fixed / In Verification" | "Closed";
 
 export interface Defect {
@@ -91,6 +92,7 @@ export interface Defect {
   impactedTestCases: string;
   status: DefectStatus;
   severity: DefectSeverity;
+  priority: DefectPriority;
   comments: string;
   owner: string;
   poc: string;
@@ -201,6 +203,18 @@ const executionAreaKey = (area: string) => {
   return key;
 };
 
+const normalizeDefect = (defect: Defect): Defect => {
+  const legacyPriority = defect.severity as string;
+  if (legacyPriority === "P1" || legacyPriority === "P2" || legacyPriority === "P3") {
+    return {
+      ...defect,
+      severity: legacyPriority === "P1" ? "High" : legacyPriority === "P2" ? "Medium" : "Low",
+      priority: defect.priority ?? legacyPriority,
+    };
+  }
+  return { ...defect, priority: defect.priority ?? "P2" };
+};
+
 const normalizeExecutionItem = (item: ExecutionItem): NormalizedExecutionItem => ({
   totalTestCases: null,
   testCasesExecuted: null,
@@ -241,7 +255,7 @@ export function normalizeProject(project: Project): NormalizedProject {
     report: { ...emptyProjectReport, ...project.report },
     preparation: (project.preparation ?? createDefaultPreparationItems()).map((item) => ({ etaToUnblock: "", owner: "", comments: "", ...item })),
     execution,
-    defects: project.defects ?? [],
+    defects: (project.defects ?? []).map(normalizeDefect),
     validatedDefects: project.validatedDefects ?? [],
     bugIds: project.bugIds ?? [],
     highLevelComments: project.highLevelComments ?? "",

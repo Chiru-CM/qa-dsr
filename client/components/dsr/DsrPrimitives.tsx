@@ -1,4 +1,4 @@
-import { ArrowUpRight, CircleAlert, CircleCheck, CircleDot, CircleX, Clock3 } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleDot, CircleX, Clock3 } from "lucide-react";
 import { statusTone } from "@/lib/dsr-data";
 
 export function StatusBadge({ status, compact = false }: { status: string; compact?: boolean }) {
@@ -28,5 +28,5 @@ export function SectionHeading({ title, description, action }: { title: string; 
 }
 
 export function EmptyState({ title, description }: { title: string; description: string }) {
-  return <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-6 py-10 text-center"><ArrowUpRight className="mx-auto mb-3 text-slate-300" size={22} /><p className="text-sm font-semibold text-slate-600">{title}</p><p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-slate-400">{description}</p></div>;
+  return <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-6 py-10 text-center"><p className="text-sm font-semibold text-slate-600">{title}</p><p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-slate-400">{description}</p></div>;
 }

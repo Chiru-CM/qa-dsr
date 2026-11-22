@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   BarChart3,
-  Bell,
   ChevronRight,
   CalendarDays,
   FolderKanban,
@@ -167,7 +166,6 @@ export default function DsrLayout() {
           </div>
           <div className="flex items-center gap-4">
             <div className="hidden items-center gap-2 border-r border-slate-200 pr-4 text-right sm:block"><p className="text-[11px] font-medium text-slate-400">Reporting period</p><p className="text-xs font-semibold text-slate-700">{sprints.find((sprint) => sprint.id === activeSprintId)?.name ?? "No sprint selected"}</p></div>
-            <button className="relative rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Notifications"><Bell size={18} /><span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#ef806f]" /></button>
             <div className="grid h-8 w-8 place-items-center rounded-full bg-[#e8f7f4] text-[11px] font-bold text-[#218f82]">U</div>
           </div>
         </header>
