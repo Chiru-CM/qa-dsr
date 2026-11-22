@@ -70,6 +70,10 @@ function ReportDataTable({ rows }: { rows: [string, ReactNode][] }) {
   return <div className="min-w-0 overflow-hidden rounded-lg border border-slate-100"><table className="w-full table-fixed border-collapse text-left text-[10px]"><tbody className="divide-y divide-slate-100">{rows.map(([label, value]) => <tr key={label}><th scope="row" className="w-[42%] break-words bg-slate-50 px-2 py-1.5 font-semibold text-slate-500 [overflow-wrap:anywhere]">{label}</th><td className="break-words whitespace-pre-wrap px-2 py-1.5 text-slate-700 [overflow-wrap:anywhere]">{value === null || value === undefined || value === "" ? "—" : value}</td></tr>)}</tbody></table></div>;
 }
 
+const populatedRows = (rows: [string, ReactNode][]) => rows.filter(([, value]) =>
+  typeof value === "string" ? value.trim().length > 0 : value !== null && value !== undefined,
+);
+
 function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: { project: Project; index: number; sprintStartDate: string; sprintEndDate: string }) {
   const report = normalizeProject(project);
   const status = executionStatus(project);
@@ -121,7 +125,11 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: {
 
         <section className="rounded-xl border border-slate-200/80 p-4">
           <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Test preparation summary</h4><p className="mt-0.5 text-[11px] text-slate-400">Readiness, estimates, blockers, owners, and comments.</p></div>
-          {report.preparation.length ? <div className="space-y-2">{report.preparation.map((item) => <article key={item.id} className="sprint-report-field-card rounded-lg border border-slate-100 p-3"><h5 className="mb-2 text-xs font-bold text-slate-700">{item.name}</h5><div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-2"><ReportDataTable rows={[["Status", <StatusBadge status={item.status} compact />], ["ETA for completion", item.eta], ["Blocked reason", item.blockedReason]]} /><ReportDataTable rows={[["ETA to unblock", item.etaToUnblock], ["Owner", item.owner], ["Comments", item.comments]]} /></div></article>)}</div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No preparation items recorded.</p>}
+          {report.preparation.length ? <div className="space-y-2">{report.preparation.map((item) => {
+            const primaryRows = populatedRows([["Status", <StatusBadge status={item.status} compact />], ["ETA for completion", item.eta], ["Blocked reason", item.blockedReason]]);
+            const secondaryRows = populatedRows([["ETA to unblock", item.etaToUnblock], ["Owner", item.owner], ["Comments", item.comments]]);
+            return <article key={item.id} className="sprint-report-field-card rounded-lg border border-slate-100 p-3"><h5 className="mb-2 text-xs font-bold text-slate-700">{item.name}</h5><div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-2">{primaryRows.length > 0 && <ReportDataTable rows={primaryRows} />}{secondaryRows.length > 0 && <ReportDataTable rows={secondaryRows} />}</div></article>;
+          })}</div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No preparation items recorded.</p>}
         </section>
 
         {project.blockers.length > 0 && <section className="rounded-xl border border-slate-200/80 p-4">
