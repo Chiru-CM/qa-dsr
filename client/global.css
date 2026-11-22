@@ -302,9 +302,9 @@
     margin-top: 8px !important;
   }
 
-  .sprint-report-chart {
-    break-inside: avoid-page;
-    page-break-inside: avoid;
+  .sprint-report-card section.sprint-report-chart {
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
   }
 
   .sprint-report-card th,
