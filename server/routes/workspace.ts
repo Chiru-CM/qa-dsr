@@ -10,7 +10,27 @@ const projectStatusSchema = z.enum(["Completed", "In Progress", "Yet to Start", 
 const stageStatusSchema = z.enum(["Completed", "In Progress", "Yet to Start", "Blocked", "Failed", "Deferred", "Complete", "Not Yet Started", "N/A"]);
 const recordStatusSchema = z.enum(["Open", "Blocked", "Monitoring", "Resolved", "Deferred"]);
 const defectStatusSchema = z.enum(["Open", "In Progress", "Development", "Fixed / In Verification", "Closed"]);
-const defectSeveritySchema = z.enum(["P1", "P2", "P3"]);
+const defectSeveritySchema = z.enum(["Low", "Medium", "High"]);
+const defectPrioritySchema = z.enum(["P1", "P2", "P3"]);
+const legacyDefectSeveritySchema = z.enum(["P1", "P2", "P3"]);
+const defectFields = z.object({
+  id: idSchema,
+  title: z.string().max(2000),
+  impactedTestCases: z.string().max(2000),
+  status: defectStatusSchema,
+  comments: z.string().max(10000),
+  owner: z.string().max(200),
+  poc: z.string().max(200),
+  link: z.string().max(2000),
+});
+const defectSchema = z.union([
+  defectFields.extend({ severity: defectSeveritySchema, priority: defectPrioritySchema }),
+  defectFields.extend({ severity: legacyDefectSeveritySchema }).transform((defect) => ({
+    ...defect,
+    severity: defect.severity === "P1" ? "High" : defect.severity === "P2" ? "Medium" : "Low",
+    priority: defect.severity,
+  })),
+]);
 const reportTextSchema = z.string().max(2000);
 const executionMetricSchema = z.union([z.number().min(0), z.string().max(200), z.null()]);
 const completionSchema = z.union([z.number().min(0).max(1), z.string().max(200), z.null()]);
@@ -63,17 +83,7 @@ const projectSchema = z.object({
     owner: z.string().max(200).optional(),
     comments: z.string().max(10000).optional(),
   })).optional(),
-  defects: z.array(z.object({
-    id: idSchema,
-    title: z.string().max(2000),
-    impactedTestCases: z.string().max(2000),
-    status: defectStatusSchema,
-    severity: defectSeveritySchema,
-    comments: z.string().max(10000),
-    owner: z.string().max(200),
-    poc: z.string().max(200),
-    link: z.string().max(2000),
-  })).optional(),
+  defects: z.array(defectSchema).optional(),
   validatedDefects: z.array(z.string().max(200)).optional(),
   additionalNotes: z.string().max(20000).optional(),
   functionalityStatus: stageStatusSchema,
