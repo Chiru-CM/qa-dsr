@@ -12,6 +12,8 @@ const recordStatusSchema = z.enum(["Open", "Blocked", "Monitoring", "Resolved", 
 const defectStatusSchema = z.enum(["Open", "In Progress", "Development", "Fixed / In Verification", "Closed"]);
 const defectSeveritySchema = z.enum(["P1", "P2", "P3"]);
 const reportTextSchema = z.string().max(2000);
+const executionMetricSchema = z.union([z.number().min(0), z.string().max(200), z.null()]);
+const completionSchema = z.union([z.number().min(0).max(1), z.string().max(200), z.null()]);
 
 const projectSchema = z.object({
   id: idSchema,
@@ -24,20 +26,20 @@ const projectSchema = z.object({
   execution: z.array(z.object({
     id: idSchema,
     area: z.string().trim().min(1).max(200),
-    completion: z.number().min(0).max(1).nullable(),
+    completion: completionSchema,
     bugs: z.array(z.string().max(200)),
     notes: z.string().max(10000),
     owner: z.string().max(200),
     poc: z.string().max(200),
-    totalTestCases: z.number().min(0).nullable().optional(),
-    testCasesExecuted: z.number().min(0).nullable().optional(),
-    testCasesPassed: z.number().min(0).nullable().optional(),
-    blocked: z.number().min(0).nullable().optional(),
+    totalTestCases: executionMetricSchema.optional(),
+    testCasesExecuted: executionMetricSchema.optional(),
+    testCasesPassed: executionMetricSchema.optional(),
+    blocked: executionMetricSchema.optional(),
     blockedReason: z.string().max(2000).optional(),
     etaToUnblock: z.string().max(100).optional(),
     progressUpdateToUnblock: z.string().max(10000).optional(),
-    toDo: z.number().min(0).nullable().optional(),
-    failed: z.number().min(0).nullable().optional(),
+    toDo: executionMetricSchema.optional(),
+    failed: executionMetricSchema.optional(),
     exploratoryTests: z.string().max(10000).optional(),
   })),
   risks: z.array(z.object({ id: idSchema, description: z.string().max(2000), notes: z.string().max(10000), status: recordStatusSchema, owner: z.string().max(200) })),
