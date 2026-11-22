@@ -134,10 +134,10 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: {
         </section>}
 
         <section className="rounded-xl border border-slate-200/80 p-4">
-          <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Test execution summary</h4><p className="mt-0.5 text-[11px] text-slate-400">All execution counts, estimates, handoffs, bugs, and comments.</p></div>
+          <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Test execution summary</h4><p className="mt-0.5 text-[11px] text-slate-400">Execution counts, outcomes, ownership, and comments.</p></div>
           {report.execution.length ? <div className="space-y-2">{report.execution.map((entry) => <article key={entry.id} className="sprint-report-field-card rounded-lg border border-slate-100 p-3"><h5 className="mb-2 text-xs font-bold text-slate-700">{entry.area}</h5><div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-2">
             <ReportDataTable rows={[["Total test cases", entry.totalTestCases ?? "—"], ["Test cases executed", entry.testCasesExecuted ?? "—"], ["% completion", completionPercent(entry.testCasesExecuted, entry.totalTestCases, entry.completion)], ["Test cases passed", entry.testCasesPassed ?? "—"], ["Pass %", asPercent(entry.testCasesPassed, entry.totalTestCases)], ["Blocked", entry.blocked ?? "—"], ["Blocked reason", entry.blockedReason], ["Block %", asPercent(entry.blocked, entry.totalTestCases)], ["Progress update to unblock", entry.progressUpdateToUnblock]]} />
-            <ReportDataTable rows={[["To do", entry.toDo ?? "—"], ["To do %", asPercent(entry.toDo, entry.totalTestCases)], ["Test cases failed", entry.failed ?? "—"], ["Fail %", asPercent(entry.failed, entry.totalTestCases)], ["Exploratory tests added", entry.exploratoryTests], ["Additional comments", entry.notes], ["Owner", entry.owner], ["POC / SL", entry.poc], ["ETA to unblock", entry.etaToUnblock], ["Bugs submitted", entry.bugs.join(", ")]]} />
+            <ReportDataTable rows={[["To do", entry.toDo ?? "—"], ["To do %", asPercent(entry.toDo, entry.totalTestCases)], ["Test cases failed", entry.failed ?? "—"], ["Fail %", asPercent(entry.failed, entry.totalTestCases)], ["Exploratory tests added", entry.exploratoryTests], ["Additional comments", entry.notes], ["Owner", entry.owner], ["POC / SL", entry.poc]]} />
           </div></article>)}</div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No execution items recorded.</p>}
         </section>
 
