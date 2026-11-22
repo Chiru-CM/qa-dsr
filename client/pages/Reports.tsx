@@ -71,7 +71,7 @@ function ReportDataTable({ rows }: { rows: [string, ReactNode][] }) {
 }
 
 const populatedRows = (rows: [string, ReactNode][]) => rows.filter(([, value]) =>
-  typeof value === "string" ? value.trim().length > 0 : value !== null && value !== undefined,
+  typeof value === "string" ? value.trim().length > 0 && value.trim() !== "—" : value !== null && value !== undefined,
 );
 
 function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: { project: Project; index: number; sprintStartDate: string; sprintEndDate: string }) {
@@ -97,6 +97,11 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: {
   const chartDefectSummary = defectSummary.map(({ status: name, counts }) => ({ status: name, P1: counts[0], P2: counts[1], P3: counts[2] }));
   const hasDefects = report.defects.length > 0;
   const reportStages = [...reportStageNames.filter((name) => !report.hiddenStages.includes(normalizeStageName(name))), ...project.stages.filter((stage) => stage.isCustom).map((stage) => stage.name)];
+  const executionEntries = report.execution.map((entry) => ({
+    entry,
+    primaryRows: populatedRows([["Total test cases", entry.totalTestCases], ["Test cases executed", entry.testCasesExecuted], ["% completion", completionPercent(entry.testCasesExecuted, entry.totalTestCases, entry.completion)], ["Test cases passed", entry.testCasesPassed], ["Pass %", asPercent(entry.testCasesPassed, entry.totalTestCases)], ["Blocked", entry.blocked], ["Blocked reason", entry.blockedReason], ["Block %", asPercent(entry.blocked, entry.totalTestCases)], ["Progress update to unblock", entry.progressUpdateToUnblock]]),
+    secondaryRows: populatedRows([["To do", entry.toDo], ["To do %", asPercent(entry.toDo, entry.totalTestCases)], ["Test cases failed", entry.failed], ["Fail %", asPercent(entry.failed, entry.totalTestCases)], ["Exploratory tests added", entry.exploratoryTests], ["Additional comments", entry.notes], ["Owner", entry.owner], ["POC / SL", entry.poc]]),
+  })).filter(({ primaryRows, secondaryRows }) => primaryRows.length > 0 || secondaryRows.length > 0);
 
   return (
     <article className={`sprint-report-card overflow-hidden rounded-2xl border border-slate-200/80 bg-white ${statusShadows[status]}`}>
@@ -144,10 +149,7 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: {
 
         <section className="rounded-xl border border-slate-200/80 p-4">
           <div className="mb-3"><h4 className="text-sm font-bold text-slate-800">Test execution summary</h4><p className="mt-0.5 text-[11px] text-slate-400">Execution counts, outcomes, ownership, and comments.</p></div>
-          {report.execution.length ? <div className="space-y-2">{report.execution.map((entry) => <article key={entry.id} className="sprint-report-field-card rounded-lg border border-slate-100 p-3"><h5 className="mb-2 text-xs font-bold text-slate-700">{entry.area}</h5><div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-2">
-            <ReportDataTable rows={[["Total test cases", entry.totalTestCases ?? "—"], ["Test cases executed", entry.testCasesExecuted ?? "—"], ["% completion", completionPercent(entry.testCasesExecuted, entry.totalTestCases, entry.completion)], ["Test cases passed", entry.testCasesPassed ?? "—"], ["Pass %", asPercent(entry.testCasesPassed, entry.totalTestCases)], ["Blocked", entry.blocked ?? "—"], ["Blocked reason", entry.blockedReason], ["Block %", asPercent(entry.blocked, entry.totalTestCases)], ["Progress update to unblock", entry.progressUpdateToUnblock]]} />
-            <ReportDataTable rows={[["To do", entry.toDo ?? "—"], ["To do %", asPercent(entry.toDo, entry.totalTestCases)], ["Test cases failed", entry.failed ?? "—"], ["Fail %", asPercent(entry.failed, entry.totalTestCases)], ["Exploratory tests added", entry.exploratoryTests], ["Additional comments", entry.notes], ["Owner", entry.owner], ["POC / SL", entry.poc]]} />
-          </div></article>)}</div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No execution items recorded.</p>}
+          {executionEntries.length ? <div className="space-y-2">{executionEntries.map(({ entry, primaryRows, secondaryRows }) => <article key={entry.id} className="sprint-report-field-card rounded-lg border border-slate-100 p-3"><h5 className="mb-2 text-xs font-bold text-slate-700">{entry.area}</h5><div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-2">{primaryRows.length > 0 && <ReportDataTable rows={primaryRows} />}{secondaryRows.length > 0 && <ReportDataTable rows={secondaryRows} />}</div></article>)}</div> : <p className="rounded-lg bg-slate-50 px-3 py-4 text-xs text-slate-400">No test execution data recorded.</p>}
         </section>
 
         <section className="rounded-xl border border-slate-200/80 p-4">
