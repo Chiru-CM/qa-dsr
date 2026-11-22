@@ -15,7 +15,7 @@ const defaultStageNames = ["Exploratory", "TC Design", "Functionality Execution"
 const normalizeStageName = (name: string) => name.toLowerCase().replace(/[^a-z]/g, "");
 const todayLabel = () => new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 const inputClass = "form-input";
-const stageStatusOptions: StageStatus[] = [...statusOptions, "TBD"];
+const stageStatusOptions: StageStatus[] = [...statusOptions.filter((status) => status !== "Not Yet Started"), "TBD"];
 const stageStatusColors: Record<StageStatus, string> = {
   Completed: "bg-[#e7f7f1] text-[#20866f]",
   Complete: "bg-[#e7f7f1] text-[#20866f]",
