@@ -72,7 +72,7 @@ const populatedRows = (rows: [string, ReactNode][]) => rows.filter(([, value]) =
   typeof value === "string" ? value.trim().length > 0 && value.trim() !== "—" : value !== null && value !== undefined,
 );
 
-function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: { project: Project; index: number; sprintStartDate: string; sprintEndDate: string }) {
+function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate, printLayout }: { project: Project; index: number; sprintStartDate: string; sprintEndDate: string; printLayout: boolean }) {
   const report = normalizeProject(project);
   const status = executionStatus(project);
   const completion = projectCompletion(project);
@@ -157,9 +157,9 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: {
           {report.validatedDefects.length > 0 && <p className="mt-3 text-[10px] text-slate-500"><strong className="text-slate-700">Validated defects:</strong> {report.validatedDefects.join(", ")}</p>}
         </section>
 
-        {(hasExecutionMetrics || hasDefects) && <div className="sprint-report-charts grid gap-4 md:grid-cols-2">
-          {hasExecutionMetrics && <section className="sprint-report-chart min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Test execution outcomes" description="Pass, blocked, to-do, and failed percentages by execution area." /><div className="mt-3 h-[260px] w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartExecution} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="category" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis domain={[0, 100]} tick={{ fontSize: 9 }} unit="%" /><Tooltip formatter={(value) => `${value}%`} /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar dataKey="Pass %" fill="#5e9bd6" radius={[3, 3, 0, 0]} /><Bar dataKey="Block %" fill="#f3a477" radius={[3, 3, 0, 0]} /><Bar dataKey="To Do %" fill="#aab0ba" radius={[3, 3, 0, 0]} /><Bar dataKey="Fail %" fill="#f07167" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
-          {hasDefects && <section className="sprint-report-chart min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Defects by status and priority" description="Defect counts across workflow status and priority." /><div className="mt-3 h-[260px] w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartDefectSummary} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="status" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis allowDecimals={false} tick={{ fontSize: 9 }} /><Tooltip /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar dataKey="P1" fill="#ef806f" radius={[3, 3, 0, 0]} /><Bar dataKey="P2" fill="#f3c969" radius={[3, 3, 0, 0]} /><Bar dataKey="P3" fill="#5e9bd6" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
+        {(hasExecutionMetrics || hasDefects) && <div className={`sprint-report-charts grid gap-4 ${printLayout ? "grid-cols-1" : "md:grid-cols-2"}`}>
+          {hasExecutionMetrics && <section className="sprint-report-chart min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Test execution outcomes" description="Pass, blocked, to-do, and failed percentages by execution area." /><div className={`mt-3 w-full ${printLayout ? "h-[320px]" : "h-[260px]"}`}><ResponsiveContainer width="100%" height="100%"><BarChart data={chartExecution} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="category" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis domain={[0, 100]} tick={{ fontSize: 9 }} unit="%" /><Tooltip formatter={(value) => `${value}%`} /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar dataKey="Pass %" fill="#5e9bd6" radius={[3, 3, 0, 0]} /><Bar dataKey="Block %" fill="#f3a477" radius={[3, 3, 0, 0]} /><Bar dataKey="To Do %" fill="#aab0ba" radius={[3, 3, 0, 0]} /><Bar dataKey="Fail %" fill="#f07167" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
+          {hasDefects && <section className="sprint-report-chart min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Defects by status and priority" description="Defect counts across workflow status and priority." /><div className={`mt-3 w-full ${printLayout ? "h-[320px]" : "h-[260px]"}`}><ResponsiveContainer width="100%" height="100%"><BarChart data={chartDefectSummary} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="status" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis allowDecimals={false} tick={{ fontSize: 9 }} /><Tooltip /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar dataKey="P1" fill="#ef806f" radius={[3, 3, 0, 0]} /><Bar dataKey="P2" fill="#f3c969" radius={[3, 3, 0, 0]} /><Bar dataKey="P3" fill="#5e9bd6" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
         </div>}
 
         {(project.riskSummary?.trim() || project.risks.length > 0) && <section className="rounded-xl border border-slate-200/80 p-4">
@@ -182,6 +182,7 @@ export default function Reports() {
     const sprint = sprints.find((item) => item.id === (activeSprintId || sprints[0]?.id));
     return sprint ? latestSprintDate(sprint) : localDate();
   });
+  const [printLayout, setPrintLayout] = useState(false);
   const selectedSprint = sprints.find((sprint) => sprint.id === selectedSprintId);
   const snapshotKey = selectedSprint ? `${selectedSprint.id}:${selectedDate}` : "";
   const snapshot = dailySnapshots[snapshotKey];
@@ -194,6 +195,12 @@ export default function Reports() {
   useEffect(() => {
     if (selectedSprint) setSelectedDate(latestSprintDate(selectedSprint));
   }, [selectedSprintId]);
+
+  useEffect(() => {
+    const restoreLayout = () => setPrintLayout(false);
+    window.addEventListener("afterprint", restoreLayout);
+    return () => window.removeEventListener("afterprint", restoreLayout);
+  }, []);
 
   const counts = useMemo(() => ({
     completed: reportProjects.filter((project) => projectExecutionStatus(project) === "Completed").length,
@@ -209,6 +216,11 @@ export default function Reports() {
     if (sprint) setSelectedDate(latestSprintDate(sprint));
   };
 
+  const preparePdf = () => {
+    setPrintLayout(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
+  };
+
   if (!sprints.length) {
     return <div className="mx-auto max-w-[1100px]"><PageTitle eyebrow="Reporting center" title="Sprint Pulse" description="A visual daily report for every project in a sprint." /><div className="rounded-2xl border border-slate-200 bg-white p-10 text-center"><CalendarDays className="mx-auto text-[#37b9a5]" size={28} /><h2 className="mt-4 text-lg font-bold text-slate-800">Create a sprint to get started</h2><p className="mt-1 text-sm text-slate-500">Once a sprint has projects, its daily pulse can be previewed and exported here.</p></div></div>;
   }
@@ -218,7 +230,7 @@ export default function Reports() {
   const missingHistory = dateIsInSprint && !snapshot;
 
   return <div className="mx-auto max-w-[1180px]">
-    <div className="sprint-report-page-title"><PageTitle eyebrow="Reporting center" title="Sprint Pulse" description="A shareable daily snapshot of every project in your sprint." action={<div className="flex flex-wrap gap-2"><button onClick={() => window.print()} disabled={!hasProjects} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:border-[#b9e7df] hover:text-[#218f82] disabled:cursor-not-allowed disabled:opacity-50"><Printer size={14} />Save as PDF</button></div>} /></div>
+    <div className="sprint-report-page-title"><PageTitle eyebrow="Reporting center" title="Sprint Pulse" description="A shareable daily snapshot of every project in your sprint." action={<div className="flex flex-wrap gap-2"><button onClick={preparePdf} disabled={!hasProjects} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:border-[#b9e7df] hover:text-[#218f82] disabled:cursor-not-allowed disabled:opacity-50"><Printer size={14} />Save as PDF</button></div>} /></div>
 
     <section className="sprint-report-controls mb-5 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_3px_15px_rgba(20,40,70,0.03)] md:p-5">
       <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
@@ -250,7 +262,7 @@ export default function Reports() {
       {missingHistory && <div className="rounded-xl border border-[#f2dfaa] bg-[#fffaf0] px-4 py-3 text-xs leading-5 text-[#8a6829]"><strong>Historical snapshot unavailable.</strong> This date predates saved daily history, so this report shows the current project details rather than a verified past-day state.</div>}
 
       <div className="flex items-end justify-between gap-3 px-1"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#31a896]">Portfolio detail</p><h2 className="mt-1 text-lg font-bold text-slate-900">Project-by-project pulse</h2></div><p className="text-[10px] font-semibold text-slate-400">{reportProjects.length} {reportProjects.length === 1 ? "PROJECT" : "PROJECTS"}</p></div>
-      <div className="sprint-report-project-list space-y-4">{reportProjects.map((project, index) => <ProjectReportCard key={project.id} project={project} index={index} sprintStartDate={snapshot?.sprintStartDate ?? selectedSprint?.startDate ?? ""} sprintEndDate={snapshot?.sprintEndDate ?? selectedSprint?.endDate ?? ""} />)}</div>
+      <div className="sprint-report-project-list space-y-4">{reportProjects.map((project, index) => <ProjectReportCard key={project.id} project={project} index={index} sprintStartDate={snapshot?.sprintStartDate ?? selectedSprint?.startDate ?? ""} sprintEndDate={snapshot?.sprintEndDate ?? selectedSprint?.endDate ?? ""} printLayout={printLayout} />)}</div>
       <footer className="flex flex-col justify-between gap-1 border-t border-slate-200 px-1 pt-3 text-[10px] font-medium text-slate-400 sm:flex-row"><span>QALens · QA Engineering</span><span>{snapshot ? `Snapshot captured ${formatDate(snapshot.date)}` : "Generated from current project data"}</span></footer>
     </div>}
   </div>;

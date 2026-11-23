@@ -310,19 +310,6 @@
     page-break-inside: avoid !important;
   }
 
-  .sprint-report-chart > div:last-child {
-    width: 100% !important;
-    height: 360px !important;
-  }
-
-  .sprint-report-chart .recharts-responsive-container,
-  .sprint-report-chart .recharts-wrapper,
-  .sprint-report-chart .recharts-surface {
-    width: 100% !important;
-    max-width: none !important;
-    height: 100% !important;
-  }
-
   .sprint-report-card th,
   .sprint-report-card td {
     padding-top: 3px !important;
