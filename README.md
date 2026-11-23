@@ -1,15 +1,24 @@
 # QALens — DSR Operations
 
-QALens is a single-user sprint and project reporting workspace for QA teams. Create sprints and projects from a fresh workspace, track execution, and generate daily sprint pulse reports.
+QALens is a shared sprint and project reporting workspace for QA teams. Create sprints and projects from a fresh workspace, track execution, and generate daily sprint pulse reports.
 
 ## Features
 
-- Create projects and sprints, assign projects to sprints, and update sprint status.
-- Track project stages, execution progress, bugs, owners, blockers, risks, and notes.
-- Review project and sprint status and export sprint reports as PDF or PNG.
+- Create sprints with a date range, then create projects within a sprint and view their execution overview.
+- Update project stages, preparation items, execution metrics, defects, risk summaries, and notes.
+- Review sprint pulse reports by sprint and date, and use the browser's print dialog to save them as PDF.
 - Save the workspace name, project data, sprint assignments, and daily report snapshots in SQLite.
 
-The app starts with an empty workspace named **My Workspace**. No example sprints or projects are preloaded. Blockers and risks can be managed within project details; the cross-project Blockers and Risks pages are placeholders.
+The app starts with an empty workspace named **My Workspace**. No example sprints or projects are preloaded. Create a sprint before adding a project. Removing a project from a sprint removes its assignment, not the project itself.
+
+## Workspace pages
+
+- **Sprints** (`/`): Create sprints and projects, and review execution and stage status.
+- **Projects** (`/projects`): Search and filter projects, and open a project's DSR to update its details.
+- **Reports** (`/reports`): Review a sprint's daily pulse and print it or save it as PDF.
+- **Settings** (`/settings`): Change the workspace name.
+
+Sprint and project execution statuses in the sprint overview and reports are derived from project execution stages; sprint status is not directly editable. The Projects page filters by the status set when a project was created, which does not automatically update when its stages change. Structured blocker and risk management is not currently available in the interface; project risk summaries can be edited as free text.
 
 ## Stack
 
@@ -18,7 +27,7 @@ The app starts with an empty workspace named **My Workspace**. No example sprint
 - SQLite through Node.js's built-in `node:sqlite` module.
 - Zod validation for workspace updates.
 
-The built-in SQLite module is experimental in Node.js 22. Use a recent Node.js 22 release (22.5 or later) to run the app.
+The built-in SQLite module is experimental in Node.js 22. Use Node.js 22.13 or later in the Node 22 series to run SQLite without an experimental flag and satisfy Vite's requirements. The project configuration specifies Node.js 22.22.3 and pnpm 10.14.0.
 
 ## Data and persistence
 
@@ -27,10 +36,12 @@ The database file defaults to `.data/dsr.sqlite` in the project directory. The d
 Set `DSR_DATABASE_PATH` to choose a different database file location. For example:
 
 ```bash
-DSR_DATABASE_PATH=/path/to/persistent-storage/dsr.sqlite pnpm start
+DSR_DATABASE_PATH=/path/to/persistent-storage/dsr.sqlite pnpm dev
 ```
 
-Keep the database file on persistent storage and include it in your backup plan. Deployments with an ephemeral filesystem will lose database contents when that filesystem is reset.
+Snapshots are captured for each sprint when the workspace opens and when project or sprint data changes. The current day's snapshot is refreshed rather than kept as a separate version for every edit; snapshots are not generated on a schedule while the workspace is closed. If no snapshot exists for a selected date, the report uses current project data and warns that the historical state is unavailable.
+
+Keep the database file on persistent storage and include it in your backup plan. Deployments with an ephemeral filesystem will lose database contents when that filesystem is reset. The API saves the entire workspace at once, so changes from concurrent sessions can overwrite one another.
 
 ## API
 
@@ -39,21 +50,16 @@ Keep the database file on persistent storage and include it in your backup plan.
 
 ## Getting started
 
-Requirements: Node.js 22.5 or later and pnpm.
+Requirements: Node.js 22.13 or later in the Node 22 series and pnpm.
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Open the local URL printed by Vite to use the app. For production, build and start the Express server:
+Open the local URL printed by Vite to use the app. The development server serves the client and API together on port `8080` by default.
 
-```bash
-pnpm build
-pnpm start
-```
-
-The production server uses `PORT` when set, or port `3000` by default.
+`pnpm build` builds the client and server. The configured `pnpm start` command currently fails during startup because the production server's catch-all route is incompatible with Express 5. This must be fixed before using the production server. Once fixed, the server is configured to use `PORT` when set, or port `3000` by default.
 
 ## Available scripts
 
@@ -61,7 +67,7 @@ The production server uses `PORT` when set, or port `3000` by default.
 | --- | --- |
 | `pnpm dev` | Start the Vite development server and Express API. |
 | `pnpm build` | Build the client and server. |
-| `pnpm start` | Start the production server after building. |
+| `pnpm start` | Start the built production server (currently blocked by the route issue above). |
 | `pnpm typecheck` | Run TypeScript validation. |
 | `pnpm test` | Run the Vitest test suite. |
 
