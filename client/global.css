@@ -296,15 +296,31 @@
 
   .sprint-report-charts {
     display: block !important;
+    width: 100% !important;
   }
 
   .sprint-report-charts > section + section {
-    margin-top: 8px !important;
+    margin-top: 12px !important;
   }
 
   .sprint-report-card section.sprint-report-chart {
+    width: 100% !important;
+    max-width: none !important;
     break-inside: avoid-page !important;
     page-break-inside: avoid !important;
+  }
+
+  .sprint-report-chart > div:last-child {
+    width: 100% !important;
+    height: 360px !important;
+  }
+
+  .sprint-report-chart .recharts-responsive-container,
+  .sprint-report-chart .recharts-wrapper,
+  .sprint-report-chart .recharts-surface {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
   }
 
   .sprint-report-card th,
