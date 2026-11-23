@@ -122,7 +122,7 @@
   }
 
   .form-input {
-    @apply h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#69cbbb] focus:ring-2 focus:ring-[#bdebe4];
+    @apply h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#69cbbb] focus:ring-2 focus:ring-[#bdebe4];
   }
 
   :where(p, span, li, h1, h2, h3, h4, h5, h6, a, button, label, td, th) {
