@@ -11,7 +11,7 @@ import NotFound from "./pages/NotFound";
 import DsrLayout from "./components/dsr/DsrLayout";
 import Projects from "./pages/Projects";
 import ProjectDetails from "./pages/ProjectDetails";
-import WorkspacePlaceholder from "./pages/WorkspacePlaceholder";
+import WorkspaceSettings from "./pages/WorkspaceSettings";
 import Reports from "./pages/Reports";
 
 const queryClient = new QueryClient();
@@ -28,9 +28,7 @@ const App = () => (
             <Route path="/projects" element={<Projects />} />
             <Route path="/projects/:projectId" element={<ProjectDetails />} />
             <Route path="/reports" element={<Reports />} />
-            <Route path="/blockers" element={<WorkspacePlaceholder />} />
-            <Route path="/risks" element={<WorkspacePlaceholder />} />
-            <Route path="/settings" element={<WorkspacePlaceholder />} />
+            <Route path="/settings" element={<WorkspaceSettings />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

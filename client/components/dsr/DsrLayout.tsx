@@ -7,8 +7,6 @@ import {
   FolderKanban,
   Menu,
   Settings,
-  ShieldAlert,
-  TriangleAlert,
   X,
 } from "lucide-react";
 import type { DailySnapshot, Project, Sprint, Workspace } from "@/lib/dsr-data";
@@ -30,8 +28,6 @@ const navItems = [
   { label: "Sprints", to: "/", icon: CalendarDays },
   { label: "Projects", to: "/projects", icon: FolderKanban },
   { label: "Reports", to: "/reports", icon: BarChart3 },
-  { label: "Blockers", to: "/blockers", icon: ShieldAlert },
-  { label: "Risks", to: "/risks", icon: TriangleAlert },
   { label: "Settings", to: "/settings", icon: Settings },
 ];
 
