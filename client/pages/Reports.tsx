@@ -72,6 +72,8 @@ const populatedRows = (rows: [string, ReactNode][]) => rows.filter(([, value]) =
   typeof value === "string" ? value.trim().length > 0 && value.trim() !== "—" : value !== null && value !== undefined,
 );
 
+const chartBarRange = (value: number): [number, number] => [0, value];
+
 function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate, printLayout }: { project: Project; index: number; sprintStartDate: string; sprintEndDate: string; printLayout: boolean }) {
   const report = normalizeProject(project);
   const status = executionStatus(project);
@@ -85,14 +87,14 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate, pri
     const total = executionMetricNumber(item.totalTestCases) ?? 0;
     return {
       category: item.area,
-      "Pass %": total ? Math.round(((executionMetricNumber(item.testCasesPassed) ?? 0) / total) * 10000) / 100 : 0,
-      "Block %": total ? Math.round(((executionMetricNumber(item.blocked) ?? 0) / total) * 10000) / 100 : 0,
-      "To Do %": total ? Math.round(((executionMetricNumber(item.toDo) ?? 0) / total) * 10000) / 100 : 0,
-      "Fail %": total ? Math.round(((executionMetricNumber(item.failed) ?? 0) / total) * 10000) / 100 : 0,
+      "Pass %": chartBarRange(total ? Math.round(((executionMetricNumber(item.testCasesPassed) ?? 0) / total) * 10000) / 100 : 0),
+      "Block %": chartBarRange(total ? Math.round(((executionMetricNumber(item.blocked) ?? 0) / total) * 10000) / 100 : 0),
+      "To Do %": chartBarRange(total ? Math.round(((executionMetricNumber(item.toDo) ?? 0) / total) * 10000) / 100 : 0),
+      "Fail %": chartBarRange(total ? Math.round(((executionMetricNumber(item.failed) ?? 0) / total) * 10000) / 100 : 0),
     };
   });
   const hasExecutionMetrics = report.execution.some((item) => [item.totalTestCases, item.testCasesPassed, item.blocked, item.toDo, item.failed].some((value) => executionMetricNumber(value) !== null));
-  const chartDefectSummary = defectSummary.map(({ status: name, counts }) => ({ status: name, P1: counts[0], P2: counts[1], P3: counts[2] }));
+  const chartDefectSummary = defectSummary.map(({ status: name, counts }) => ({ status: name, P1: chartBarRange(counts[0]), P2: chartBarRange(counts[1]), P3: chartBarRange(counts[2]) }));
   const hasDefects = report.defects.length > 0;
   const reportStages = [...reportStageNames.filter((name) => !report.hiddenStages.includes(normalizeStageName(name))), ...project.stages.filter((stage) => stage.isCustom).map((stage) => stage.name)];
   const executionEntries = report.execution.map((entry) => ({
@@ -158,8 +160,8 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate, pri
         </section>
 
         {(hasExecutionMetrics || hasDefects) && <div className={`sprint-report-charts grid gap-4 ${printLayout ? "grid-cols-1" : "md:grid-cols-2"}`}>
-          {hasExecutionMetrics && <section className="sprint-report-chart min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Test execution outcomes" description="Pass, blocked, to-do, and failed percentages by execution area." /><div className={`mt-3 w-full ${printLayout ? "h-[320px]" : "h-[260px]"}`}><ResponsiveContainer width="100%" height="100%"><BarChart data={chartExecution} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="category" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis domain={[0, 100]} tick={{ fontSize: 9 }} unit="%" /><Tooltip formatter={(value) => `${value}%`} /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar dataKey="Pass %" fill="#5e9bd6" radius={[3, 3, 0, 0]} /><Bar dataKey="Block %" fill="#f3a477" radius={[3, 3, 0, 0]} /><Bar dataKey="To Do %" fill="#aab0ba" radius={[3, 3, 0, 0]} /><Bar dataKey="Fail %" fill="#f07167" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
-          {hasDefects && <section className="sprint-report-chart min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Defects by status and priority" description="Defect counts across workflow status and priority." /><div className={`mt-3 w-full ${printLayout ? "h-[320px]" : "h-[260px]"}`}><ResponsiveContainer width="100%" height="100%"><BarChart data={chartDefectSummary} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="status" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis allowDecimals={false} tick={{ fontSize: 9 }} /><Tooltip /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar dataKey="P1" fill="#ef806f" radius={[3, 3, 0, 0]} /><Bar dataKey="P2" fill="#f3c969" radius={[3, 3, 0, 0]} /><Bar dataKey="P3" fill="#5e9bd6" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
+          {hasExecutionMetrics && <section className="sprint-report-chart min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Test execution outcomes" description="Pass, blocked, to-do, and failed percentages by execution area." /><div className={`mt-3 w-full ${printLayout ? "h-[320px]" : "h-[260px]"}`}><ResponsiveContainer width="100%" height="100%"><BarChart data={chartExecution} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="category" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis domain={[0, 100]} tick={{ fontSize: 9 }} unit="%" /><Tooltip formatter={(value) => `${Array.isArray(value) ? value[1] : value}%`} /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar isAnimationActive={!printLayout} dataKey="Pass %" fill="#5e9bd6" radius={[3, 3, 0, 0]} /><Bar isAnimationActive={!printLayout} dataKey="Block %" fill="#f3a477" radius={[3, 3, 0, 0]} /><Bar isAnimationActive={!printLayout} dataKey="To Do %" fill="#aab0ba" radius={[3, 3, 0, 0]} /><Bar isAnimationActive={!printLayout} dataKey="Fail %" fill="#f07167" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
+          {hasDefects && <section className="sprint-report-chart min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Defects by status and priority" description="Defect counts across workflow status and priority." /><div className={`mt-3 w-full ${printLayout ? "h-[320px]" : "h-[260px]"}`}><ResponsiveContainer width="100%" height="100%"><BarChart data={chartDefectSummary} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="status" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis allowDecimals={false} tick={{ fontSize: 9 }} /><Tooltip formatter={(value) => Array.isArray(value) ? value[1] : value} /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar isAnimationActive={!printLayout} dataKey="P1" fill="#ef806f" radius={[3, 3, 0, 0]} /><Bar isAnimationActive={!printLayout} dataKey="P2" fill="#f3c969" radius={[3, 3, 0, 0]} /><Bar isAnimationActive={!printLayout} dataKey="P3" fill="#5e9bd6" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
         </div>}
 
         {(project.riskSummary?.trim() || project.risks.length > 0) && <section className="rounded-xl border border-slate-200/80 p-4">
