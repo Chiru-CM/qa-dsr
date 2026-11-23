@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CalendarDays, Check, CircleAlert, Clock3, Download, FileImage, FileText, Printer, ShieldAlert, Users } from "lucide-react";
-import { toPng } from "html-to-image";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { CalendarDays, Check, CircleAlert, Clock3, Download, FileText, Printer, ShieldAlert, Users } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DsrOutletContext } from "@/components/dsr/DsrLayout";
@@ -50,7 +49,6 @@ const statusShadows: Record<string, string> = {
   "Needs attention": "shadow-[0_6px_20px_rgba(198,94,82,0.17)]",
 };
 
-const safeFileName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 const reportStageNames = ["Exploratory", "TC Design", "Functionality Execution", "Non Functionality Execution", "Automation- Print", "Automation- Scan"];
 const normalizeStageName = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
 const asPercent = (part: ExecutionMetricValue | undefined, whole: ExecutionMetricValue | undefined) => {
@@ -74,7 +72,9 @@ const populatedRows = (rows: [string, ReactNode][]) => rows.filter(([, value]) =
   typeof value === "string" ? value.trim().length > 0 && value.trim() !== "—" : value !== null && value !== undefined,
 );
 
-function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: { project: Project; index: number; sprintStartDate: string; sprintEndDate: string }) {
+const chartBarRange = (value: number): [number, number] => [0, value];
+
+function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate, printLayout }: { project: Project; index: number; sprintStartDate: string; sprintEndDate: string; printLayout: boolean }) {
   const report = normalizeProject(project);
   const status = executionStatus(project);
   const completion = projectCompletion(project);
@@ -87,14 +87,14 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: {
     const total = executionMetricNumber(item.totalTestCases) ?? 0;
     return {
       category: item.area,
-      "Pass %": total ? Math.round(((executionMetricNumber(item.testCasesPassed) ?? 0) / total) * 10000) / 100 : 0,
-      "Block %": total ? Math.round(((executionMetricNumber(item.blocked) ?? 0) / total) * 10000) / 100 : 0,
-      "To Do %": total ? Math.round(((executionMetricNumber(item.toDo) ?? 0) / total) * 10000) / 100 : 0,
-      "Fail %": total ? Math.round(((executionMetricNumber(item.failed) ?? 0) / total) * 10000) / 100 : 0,
+      "Pass %": chartBarRange(total ? Math.round(((executionMetricNumber(item.testCasesPassed) ?? 0) / total) * 10000) / 100 : 0),
+      "Block %": chartBarRange(total ? Math.round(((executionMetricNumber(item.blocked) ?? 0) / total) * 10000) / 100 : 0),
+      "To Do %": chartBarRange(total ? Math.round(((executionMetricNumber(item.toDo) ?? 0) / total) * 10000) / 100 : 0),
+      "Fail %": chartBarRange(total ? Math.round(((executionMetricNumber(item.failed) ?? 0) / total) * 10000) / 100 : 0),
     };
   });
   const hasExecutionMetrics = report.execution.some((item) => [item.totalTestCases, item.testCasesPassed, item.blocked, item.toDo, item.failed].some((value) => executionMetricNumber(value) !== null));
-  const chartDefectSummary = defectSummary.map(({ status: name, counts }) => ({ status: name, P1: counts[0], P2: counts[1], P3: counts[2] }));
+  const chartDefectSummary = defectSummary.map(({ status: name, counts }) => ({ status: name, P1: chartBarRange(counts[0]), P2: chartBarRange(counts[1]), P3: chartBarRange(counts[2]) }));
   const hasDefects = report.defects.length > 0;
   const reportStages = [...reportStageNames.filter((name) => !report.hiddenStages.includes(normalizeStageName(name))), ...project.stages.filter((stage) => stage.isCustom).map((stage) => stage.name)];
   const executionEntries = report.execution.map((entry) => ({
@@ -159,9 +159,9 @@ function ProjectReportCard({ project, index, sprintStartDate, sprintEndDate }: {
           {report.validatedDefects.length > 0 && <p className="mt-3 text-[10px] text-slate-500"><strong className="text-slate-700">Validated defects:</strong> {report.validatedDefects.join(", ")}</p>}
         </section>
 
-        {(hasExecutionMetrics || hasDefects) && <div className="sprint-report-charts grid gap-4 md:grid-cols-2">
-          {hasExecutionMetrics && <section className="sprint-report-chart min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Test execution outcomes" description="Pass, blocked, to-do, and failed percentages by execution area." /><div className="mt-3 h-[260px] w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartExecution} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="category" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis domain={[0, 100]} tick={{ fontSize: 9 }} unit="%" /><Tooltip formatter={(value) => `${value}%`} /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar dataKey="Pass %" fill="#5e9bd6" radius={[3, 3, 0, 0]} /><Bar dataKey="Block %" fill="#f3a477" radius={[3, 3, 0, 0]} /><Bar dataKey="To Do %" fill="#aab0ba" radius={[3, 3, 0, 0]} /><Bar dataKey="Fail %" fill="#f07167" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
-          {hasDefects && <section className="sprint-report-chart min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Defects by status and priority" description="Defect counts across workflow status and priority." /><div className="mt-3 h-[260px] w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartDefectSummary} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="status" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis allowDecimals={false} tick={{ fontSize: 9 }} /><Tooltip /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar dataKey="P1" fill="#ef806f" radius={[3, 3, 0, 0]} /><Bar dataKey="P2" fill="#f3c969" radius={[3, 3, 0, 0]} /><Bar dataKey="P3" fill="#5e9bd6" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
+        {(hasExecutionMetrics || hasDefects) && <div className={`sprint-report-charts grid gap-4 ${printLayout ? "grid-cols-1" : "md:grid-cols-2"}`}>
+          {hasExecutionMetrics && <section className="sprint-report-chart min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Test execution outcomes" description="Pass, blocked, to-do, and failed percentages by execution area." /><div className={`mt-3 w-full ${printLayout ? "h-[320px]" : "h-[260px]"}`}><ResponsiveContainer width="100%" height="100%"><BarChart data={chartExecution} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="category" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis domain={[0, 100]} tick={{ fontSize: 9 }} unit="%" /><Tooltip formatter={(value) => `${Array.isArray(value) ? value[1] : value}%`} /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar isAnimationActive={!printLayout} dataKey="Pass %" fill="#5e9bd6" radius={[3, 3, 0, 0]} /><Bar isAnimationActive={!printLayout} dataKey="Block %" fill="#f3a477" radius={[3, 3, 0, 0]} /><Bar isAnimationActive={!printLayout} dataKey="To Do %" fill="#aab0ba" radius={[3, 3, 0, 0]} /><Bar isAnimationActive={!printLayout} dataKey="Fail %" fill="#f07167" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
+          {hasDefects && <section className="sprint-report-chart min-w-0 rounded-xl border border-slate-200/80 p-4"><SectionHeading title="Defects by status and priority" description="Defect counts across workflow status and priority." /><div className={`mt-3 w-full ${printLayout ? "h-[320px]" : "h-[260px]"}`}><ResponsiveContainer width="100%" height="100%"><BarChart data={chartDefectSummary} margin={{ top: 8, right: 8, left: -18, bottom: 42 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="status" interval={0} angle={-20} textAnchor="end" height={68} tick={{ fontSize: 9 }} /><YAxis allowDecimals={false} tick={{ fontSize: 9 }} /><Tooltip formatter={(value) => Array.isArray(value) ? value[1] : value} /><Legend wrapperStyle={{ fontSize: 9 }} /><Bar isAnimationActive={!printLayout} dataKey="P1" fill="#ef806f" radius={[3, 3, 0, 0]} /><Bar isAnimationActive={!printLayout} dataKey="P2" fill="#f3c969" radius={[3, 3, 0, 0]} /><Bar isAnimationActive={!printLayout} dataKey="P3" fill="#5e9bd6" radius={[3, 3, 0, 0]} /></BarChart></ResponsiveContainer></div></section>}
         </div>}
 
         {(project.riskSummary?.trim() || project.risks.length > 0) && <section className="rounded-xl border border-slate-200/80 p-4">
@@ -184,9 +184,7 @@ export default function Reports() {
     const sprint = sprints.find((item) => item.id === (activeSprintId || sprints[0]?.id));
     return sprint ? latestSprintDate(sprint) : localDate();
   });
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState("");
-  const reportRef = useRef<HTMLDivElement>(null);
+  const [printLayout, setPrintLayout] = useState(false);
   const selectedSprint = sprints.find((sprint) => sprint.id === selectedSprintId);
   const snapshotKey = selectedSprint ? `${selectedSprint.id}:${selectedDate}` : "";
   const snapshot = dailySnapshots[snapshotKey];
@@ -200,6 +198,12 @@ export default function Reports() {
     if (selectedSprint) setSelectedDate(latestSprintDate(selectedSprint));
   }, [selectedSprintId]);
 
+  useEffect(() => {
+    const restoreLayout = () => setPrintLayout(false);
+    window.addEventListener("afterprint", restoreLayout);
+    return () => window.removeEventListener("afterprint", restoreLayout);
+  }, []);
+
   const counts = useMemo(() => ({
     completed: reportProjects.filter((project) => projectExecutionStatus(project) === "Completed").length,
     inProgress: reportProjects.filter((project) => projectExecutionStatus(project) === "In Progress").length,
@@ -212,24 +216,11 @@ export default function Reports() {
     setSelectedSprintId(sprintId);
     const sprint = sprints.find((item) => item.id === sprintId);
     if (sprint) setSelectedDate(latestSprintDate(sprint));
-    setExportError("");
   };
 
-  const exportPng = async () => {
-    if (!reportRef.current) return;
-    setExporting(true);
-    setExportError("");
-    try {
-      const dataUrl = await toPng(reportRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: "#f7f9fc" });
-      const link = document.createElement("a");
-      link.download = `${safeFileName(selectedSprint?.name ?? "sprint")}-${selectedDate}-pulse.png`;
-      link.href = dataUrl;
-      link.click();
-    } catch {
-      setExportError("The image could not be generated. Try printing the report as a PDF instead.");
-    } finally {
-      setExporting(false);
-    }
+  const preparePdf = () => {
+    setPrintLayout(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
   };
 
   if (!sprints.length) {
@@ -241,12 +232,12 @@ export default function Reports() {
   const missingHistory = dateIsInSprint && !snapshot;
 
   return <div className="mx-auto max-w-[1180px]">
-    <div className="sprint-report-page-title"><PageTitle eyebrow="Reporting center" title="Sprint Pulse" description="A shareable daily snapshot of every project in your sprint." action={<div className="flex flex-wrap gap-2"><button onClick={() => window.print()} disabled={!hasProjects} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:border-[#b9e7df] hover:text-[#218f82] disabled:cursor-not-allowed disabled:opacity-50"><Printer size={14} />Save as PDF</button><button onClick={exportPng} disabled={!hasProjects || exporting} className="inline-flex items-center gap-2 rounded-lg bg-[#10263d] px-3.5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#183752] disabled:cursor-not-allowed disabled:opacity-60"><FileImage size={14} />{exporting ? "Creating image…" : "Download PNG"}</button></div>} /></div>
+    <div className="sprint-report-page-title"><PageTitle eyebrow="Reporting center" title="Sprint Pulse" description="A shareable daily snapshot of every project in your sprint." action={<div className="flex flex-wrap gap-2"><button onClick={preparePdf} disabled={!hasProjects} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:border-[#b9e7df] hover:text-[#218f82] disabled:cursor-not-allowed disabled:opacity-50"><Printer size={14} />Save as PDF</button></div>} /></div>
 
     <section className="sprint-report-controls mb-5 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_3px_15px_rgba(20,40,70,0.03)] md:p-5">
       <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
         <label className="block"><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Sprint</span><select value={selectedSprintId} onChange={(event) => selectSprint(event.target.value)} className="form-input">{sprints.map((sprint) => <option key={sprint.id} value={sprint.id}>{sprint.name}</option>)}</select></label>
-        <label className="block"><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Report date</span><input type="date" value={selectedDate} min={selectedSprint?.startDate} max={selectedSprint ? latestSprintDate(selectedSprint) : undefined} onChange={(event) => { setSelectedDate(event.target.value); setExportError(""); }} className="form-input" /></label>
+        <label className="block"><span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Report date</span><input type="date" value={selectedDate} min={selectedSprint?.startDate} max={selectedSprint ? latestSprintDate(selectedSprint) : undefined} onChange={(event) => setSelectedDate(event.target.value)} className="form-input" /></label>
         <div className="flex h-10 items-center gap-2 rounded-lg bg-[#f3f8f8] px-3 text-xs font-semibold text-[#218f82]"><CalendarDays size={15} />{selectedSprint ? `${selectedSprint.projectIds.length} projects in sprint` : "Choose a sprint"}</div>
       </div>
       <div className="mt-3 flex flex-wrap items-start gap-x-2 gap-y-1 border-t border-slate-100 pt-3 text-[11px] leading-5 text-slate-500">
@@ -254,9 +245,7 @@ export default function Reports() {
       </div>
     </section>
 
-    {exportError && <p role="alert" className="sprint-report-alert mb-4 rounded-lg border border-[#f7c9c2] bg-[#fff8f6] px-3 py-2 text-xs font-semibold text-[#c65e52]">{exportError}</p>}
-
-    {!hasProjects ? <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center"><Download className="mx-auto text-slate-300" size={25} /><h2 className="mt-4 text-base font-bold text-slate-700">No projects in this sprint yet</h2><p className="mt-1 text-xs text-slate-500">Add projects from the sprint workspace to build its daily report.</p></div> : <div ref={reportRef} className="sprint-report-print-area space-y-5 rounded-2xl bg-[#f7f9fc]">
+    {!hasProjects ? <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center"><Download className="mx-auto text-slate-300" size={25} /><h2 className="mt-4 text-base font-bold text-slate-700">No projects in this sprint yet</h2><p className="mt-1 text-xs text-slate-500">Add projects from the sprint workspace to build its daily report.</p></div> : <div className="sprint-report-print-area space-y-5 rounded-2xl bg-[#f7f9fc]">
       <section className="sprint-report-hero relative overflow-hidden rounded-2xl bg-[#10263d] p-6 text-white shadow-[0_12px_32px_rgba(16,38,61,0.18)] md:p-8">
         <div className="pointer-events-none absolute -right-12 -top-24 h-72 w-72 rounded-full border-[38px] border-white/[0.045]" /><div className="pointer-events-none absolute -bottom-28 right-28 h-56 w-56 rounded-full border-[28px] border-[#37c7b1]/10" />
         <div className="relative flex flex-col justify-between gap-7 lg:flex-row lg:items-end">
@@ -275,7 +264,7 @@ export default function Reports() {
       {missingHistory && <div className="rounded-xl border border-[#f2dfaa] bg-[#fffaf0] px-4 py-3 text-xs leading-5 text-[#8a6829]"><strong>Historical snapshot unavailable.</strong> This date predates saved daily history, so this report shows the current project details rather than a verified past-day state.</div>}
 
       <div className="flex items-end justify-between gap-3 px-1"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#31a896]">Portfolio detail</p><h2 className="mt-1 text-lg font-bold text-slate-900">Project-by-project pulse</h2></div><p className="text-[10px] font-semibold text-slate-400">{reportProjects.length} {reportProjects.length === 1 ? "PROJECT" : "PROJECTS"}</p></div>
-      <div className="sprint-report-project-list space-y-4">{reportProjects.map((project, index) => <ProjectReportCard key={project.id} project={project} index={index} sprintStartDate={snapshot?.sprintStartDate ?? selectedSprint?.startDate ?? ""} sprintEndDate={snapshot?.sprintEndDate ?? selectedSprint?.endDate ?? ""} />)}</div>
+      <div className="sprint-report-project-list space-y-4">{reportProjects.map((project, index) => <ProjectReportCard key={project.id} project={project} index={index} sprintStartDate={snapshot?.sprintStartDate ?? selectedSprint?.startDate ?? ""} sprintEndDate={snapshot?.sprintEndDate ?? selectedSprint?.endDate ?? ""} printLayout={printLayout} />)}</div>
       <footer className="flex flex-col justify-between gap-1 border-t border-slate-200 px-1 pt-3 text-[10px] font-medium text-slate-400 sm:flex-row"><span>QALens · QA Engineering</span><span>{snapshot ? `Snapshot captured ${formatDate(snapshot.date)}` : "Generated from current project data"}</span></footer>
     </div>}
   </div>;

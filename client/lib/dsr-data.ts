@@ -339,4 +339,4 @@ export const projectCompletion = (project: Project) => {
   return values.length ? Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 100) : 0;
 };
 
-export const bugCount = (project: Project) => project.execution.reduce((count, entry) => count + entry.bugs.length, 0);
+export const bugCount = (project: Project) => project.defects?.length ?? 0;
